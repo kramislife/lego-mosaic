@@ -11,11 +11,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import LoadingState from "@/components/layout/fallback/LoadingState";
+import ErrorState from "@/components/layout/fallback/ErrorState";
 
 const ColorManagement = ({
   tool,
   setTool,
   colors,
+  colorsLoading,
+  colorsError,
   activeColorId,
   setActiveColorId,
   customName,
@@ -23,6 +27,25 @@ const ColorManagement = ({
   customHex,
   setCustomHex,
 }) => {
+  if (colorsLoading) {
+    return (
+      <LoadingState
+        title="Color Management"
+        message="Loading colors..."
+        icon={Palette}
+      />
+    );
+  }
+
+  if (colorsError) {
+    return (
+      <ErrorState
+        title="Error Loading Colors"
+        message="Please refresh the page or try again later"
+      />
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
@@ -77,21 +100,21 @@ const ColorManagement = ({
         <div>
           <Label className="mb-3 text-muted-foreground">Available Colors</Label>
           <div className="flex flex-wrap gap-2">
-            {colors.map((c) => (
+            {colors?.map((color) => (
               <Button
-                key={c.id}
+                key={color.id}
                 type="button"
                 variant="outline"
                 size="icon"
-                onClick={() => setActiveColorId(c.id)}
-                aria-label={`${c.name} (${c.hex})`}
-                title={`${c.name} (${c.hex})`}
-                className={`size-6 rounded-full p-0 ${
-                  activeColorId === c.id
+                onClick={() => setActiveColorId(color.id)}
+                aria-label={`${color.name} (${color.hex})`}
+                title={`${color.name} (${color.hex})`}
+                className={`size-6 ${
+                  activeColorId === color.id
                     ? "ring-2 ring-primary"
-                    : "hover:ring-1 hover:ring-muted-foreground/30"
+                    : "hover:ring-2 hover:ring-accent"
                 }`}
-                style={{ backgroundColor: c.hex }}
+                style={{ backgroundColor: color.hex }}
               />
             ))}
           </div>
@@ -118,9 +141,12 @@ const ColorManagement = ({
                 value={customHex}
                 onChange={(e) => setCustomHex(e.target.value)}
               />
-              <div
-                className="h-10 w-14 rounded-md border"
-                style={{ backgroundColor: customHex }}
+              <Input
+                type="color"
+                value={customHex}
+                onChange={(e) => setCustomHex(e.target.value)}
+                className="w-15 p-1 cursor-pointer"
+                title="Click to open color picker"
               />
             </div>
           </div>

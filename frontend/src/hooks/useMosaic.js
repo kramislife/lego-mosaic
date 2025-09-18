@@ -1,8 +1,24 @@
 import { useMemo, useState, useCallback } from "react";
-import { LEGO_COLORS } from "@/constant/colorConfig";
+import { useGetColorsQuery } from "@/redux/api/colorApi";
 
 export const useMosaic = () => {
   const [baseGrid, setBaseGrid] = useState(16);
+
+  const {
+    data: colorsData,
+    isLoading: colorsLoading,
+    error: colorsError,
+  } = useGetColorsQuery();
+
+  const colors = useMemo(() => {
+    return (
+      colorsData?.colors?.map((color) => ({
+        id: color._id,
+        name: color.color_name,
+        hex: color.hex_code,
+      })) || []
+    );
+  }, [colorsData]);
 
   const allowedSizes = useMemo(() => {
     const sizes = [];
@@ -52,10 +68,10 @@ export const useMosaic = () => {
   const [contrast, setContrast] = useState(0);
 
   const [pixelMode, setPixelMode] = useState("square");
-  const [activeColorId, setActiveColorId] = useState(LEGO_COLORS[0].id);
+  const [activeColorId, setActiveColorId] = useState(colors?.[0]?.id);
   const [tool, setTool] = useState("paint"); // paint | pick | erase
   const [customName, setCustomName] = useState("");
-  const [customHex, setCustomHex] = useState("#FF0000");
+  const [customHex, setCustomHex] = useState("#000000");
 
   return {
     // dimensions & grid
@@ -85,7 +101,9 @@ export const useMosaic = () => {
     // pixel mode & colors
     pixelMode,
     setPixelMode,
-    colors: LEGO_COLORS,
+    colors,
+    colorsLoading,
+    colorsError,
     activeColorId,
     setActiveColorId,
     tool,

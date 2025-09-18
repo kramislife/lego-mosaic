@@ -33,6 +33,8 @@ const Mosaic = () => {
     pixelMode,
     setPixelMode,
     colors,
+    colorsLoading,
+    colorsError,
     activeColorId,
     setActiveColorId,
     tool,
@@ -75,6 +77,8 @@ const Mosaic = () => {
           tool={tool}
           setTool={setTool}
           colors={colors}
+          colorsLoading={colorsLoading}
+          colorsError={colorsError}
           activeColorId={activeColorId}
           setActiveColorId={setActiveColorId}
           customName={customName}

@@ -143,8 +143,9 @@ Valid Combinations per Base Grid
 - When swapping colors, ensure at least 1 pixel of the source color exists.
 
 🛠 Tools & Libraries
+
 - **Frontend**
-  - [`react-color` or `react-colorful`] → color picker for custom colors.
+  - **Native HTML color input** → built-in color picker for custom colors.
   - Pixel editing: [`konva.js`] or [`fabric.js`] → for interactive pixel-level editing.
   - Color distance algorithms:
     - Euclidean distance in RGB
