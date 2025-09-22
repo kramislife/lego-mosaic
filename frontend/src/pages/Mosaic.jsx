@@ -52,6 +52,11 @@ const Mosaic = () => {
     setCustomName,
     customHex,
     setCustomHex,
+    addCustomColor,
+    deleteCustomColor,
+    isDeleteCustomMode,
+    toggleDeleteCustomMode,
+    hasCustomColors,
   } = useMosaic();
 
   return (
@@ -109,6 +114,11 @@ const Mosaic = () => {
           setCustomName={setCustomName}
           customHex={customHex}
           setCustomHex={setCustomHex}
+          addCustomColor={addCustomColor}
+          deleteCustomColor={deleteCustomColor}
+          isDeleteCustomMode={isDeleteCustomMode}
+          toggleDeleteCustomMode={toggleDeleteCustomMode}
+          hasCustomColors={hasCustomColors}
         />
         {/* Export (PNG, PDF, XML, CSV) */}
         <Export />

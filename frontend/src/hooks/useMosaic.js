@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useGetColorsQuery } from "@/redux/api/colorApi";
 import { centerCrop, makeAspectCrop } from "react-image-crop";
@@ -10,7 +10,7 @@ export const useMosaic = () => {
   const [zoom, setZoom] = useState(1);
   const fileInputRef = useRef(null);
 
-  // validate file type, accept only JPG, JPEG, PNG
+  // Validate file type, accept only JPG, JPEG, PNG
   const handleFileSelect = useCallback((event) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -48,7 +48,7 @@ export const useMosaic = () => {
     [getCenteredSquareCrop]
   );
 
-  // remove image when user click on cancel button
+  // Remove image when user click on cancel button
   const handleRemoveImage = useCallback(() => {
     if (imageSrc) {
       URL.revokeObjectURL(imageSrc);
@@ -115,7 +115,7 @@ export const useMosaic = () => {
 
   // ==================================== Color Management ===================================
 
-  // get colors via api from mocsupply.com
+  // Get colors via api from mocsupply.com
   const {
     data: colorsData,
     isLoading: colorsLoading,
@@ -135,7 +135,107 @@ export const useMosaic = () => {
   const [activeColorId, setActiveColorId] = useState(colors?.[0]?.id);
   const [tool, setTool] = useState("paint");
   const [customName, setCustomName] = useState("");
-  const [customHex, setCustomHex] = useState("#000000");
+  const [customHex, setCustomHex] = useState("");
+  const [customColors, setCustomColors] = useState(() => {
+    try {
+      const raw = localStorage.getItem("customColors");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Updates the in-memory custom colors state and saves it to localStorage
+  const persistCustomColors = useCallback((next) => {
+    setCustomColors(next);
+    try {
+      localStorage.setItem("customColors", JSON.stringify(next));
+    } catch {}
+  }, []);
+
+  // Prioritize custom colors over default colors
+  const paletteColors = useMemo(() => {
+    return [
+      ...customColors.map((c) => ({ ...c, isCustom: true })),
+      ...colors.map((c) => ({ ...c, isCustom: false })),
+    ];
+  }, [colors, customColors]);
+
+  // Flag for presence of any custom colors (for UI toggles)
+  const hasCustomColors = customColors.length > 0;
+
+  // Validate hex code
+  const isValidHex = useCallback((hex) => /^#([0-9A-Fa-f]{6})$/.test(hex), []);
+
+  // Add custom color
+  const addCustomColor = useCallback(() => {
+    const trimmedName = (customName || "").trim();
+    const candidateHex = (customHex || "").trim();
+    if (!trimmedName) {
+      toast.error("Color name is required");
+      return;
+    }
+    if (!candidateHex) {
+      toast.error("Hex code is required");
+      return;
+    }
+    if (!isValidHex(candidateHex)) {
+      toast.error("Hex must be in #RRGGBB format");
+      return;
+    }
+    const nameExists = paletteColors.some(
+      (c) => c.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (nameExists) {
+      toast.error("A color with this name already exists");
+      return;
+    }
+    const next = [
+      { id: `custom-${Date.now()}`, name: trimmedName, hex: candidateHex },
+      ...customColors,
+    ];
+    persistCustomColors(next);
+    setCustomName("");
+    setCustomHex("");
+    toast.success(`${trimmedName || "Custom"} color added successfully`);
+  }, [
+    customName,
+    customHex,
+    customColors,
+    isValidHex,
+    paletteColors,
+    persistCustomColors,
+  ]);
+
+  // Delete custom color
+  const deleteCustomColor = useCallback(
+    (paletteId) => {
+      const removed = customColors.find((c) => c.id === paletteId);
+      const next = customColors.filter((c) => c.id !== paletteId);
+      persistCustomColors(next);
+      if (activeColorId === paletteId) {
+        const fallbackId = next.length ? next[0].id : colors[0]?.id;
+        if (fallbackId) setActiveColorId(fallbackId);
+      }
+      toast.success(`${removed?.name || "Custom"} removed successfully`);
+    },
+    [customColors, persistCustomColors, activeColorId, colors]
+  );
+
+  // Batch delete mode for custom colors
+  const [isDeleteCustomMode, setIsDeleteCustomMode] = useState(false);
+  const toggleDeleteCustomMode = useCallback(() => {
+    setIsDeleteCustomMode((prev) => !prev);
+  }, []);
+
+  // Ensure first available color is set as the active color whenever the palette changes
+  useEffect(() => {
+    const firstId =
+      (Array.isArray(paletteColors) && paletteColors[0]?.id) || undefined;
+    if (firstId && activeColorId !== firstId) {
+      setActiveColorId(firstId);
+    }
+  }, [paletteColors]);
 
   return {
     // image attachment
@@ -179,7 +279,7 @@ export const useMosaic = () => {
     setPixelMode,
 
     // color management
-    colors,
+    colors: paletteColors,
     colorsLoading,
     colorsError,
     activeColorId,
@@ -190,6 +290,11 @@ export const useMosaic = () => {
     setCustomName,
     customHex,
     setCustomHex,
+    addCustomColor,
+    deleteCustomColor,
+    isDeleteCustomMode,
+    toggleDeleteCustomMode,
+    hasCustomColors,
   };
 };
 
