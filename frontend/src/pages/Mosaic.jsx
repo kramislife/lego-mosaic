@@ -10,18 +10,27 @@ import { useMosaic } from "@/hooks/useMosaic";
 
 const Mosaic = () => {
   const {
+    imageSrc,
+    crop,
+    setCrop,
+    zoom,
+    setZoom,
+    fileInputRef,
+    handleFileSelect,
+    handleImageLoad,
+    handleRemoveImage,
     baseGrid,
     width,
     setWidth,
     height,
     setHeight,
-    clampToAllowed,
-    onSelectBase,
     min,
     max,
     step,
     cols,
     rows,
+    clampToAllowed,
+    onSelectBase,
     hue,
     setHue,
     saturation,
@@ -43,25 +52,43 @@ const Mosaic = () => {
     setCustomName,
     customHex,
     setCustomHex,
+    addCustomColor,
+    deleteCustomColor,
+    isDeleteCustomMode,
+    toggleDeleteCustomMode,
+    hasCustomColors,
   } = useMosaic();
 
   return (
     <div className="w-full grid grid-cols-12 gap-3 p-5">
       <aside className="col-span-12 lg:col-span-4 space-y-3">
-        <UploadImage />
+        {/* Upload Image */}
+        <UploadImage
+          imageSrc={imageSrc}
+          crop={crop}
+          setCrop={setCrop}
+          zoom={zoom}
+          setZoom={setZoom}
+          fileInputRef={fileInputRef}
+          handleFileSelect={handleFileSelect}
+          handleImageLoad={handleImageLoad}
+          handleRemoveImage={handleRemoveImage}
+        />
+        {/* Adjust Base Grid & Resolution */}
         <Resolution
           baseGrid={baseGrid}
           onSelectBase={onSelectBase}
-          min={min}
-          max={max}
-          step={step}
           width={width}
           height={height}
           onWidth={(v) => setWidth(clampToAllowed(v))}
           onHeight={(v) => setHeight(clampToAllowed(v))}
+          min={min}
+          max={max}
+          step={step}
           cols={cols}
           rows={rows}
         />
+        {/* Adjustments (HSV, Brightness, Contrast) */}
         <Adjustment
           hue={hue}
           setHue={setHue}
@@ -72,7 +99,9 @@ const Mosaic = () => {
           contrast={contrast}
           setContrast={setContrast}
         />
+        {/* Pixel Mode (Square, Circle, Concentric Square, Concentric Circle) */}
         <PixelMode pixelMode={pixelMode} setPixelMode={setPixelMode} />
+        {/* Color Management (Color Picker, Color List, Custom Color) */}
         <ColorManagement
           tool={tool}
           setTool={setTool}
@@ -85,11 +114,18 @@ const Mosaic = () => {
           setCustomName={setCustomName}
           customHex={customHex}
           setCustomHex={setCustomHex}
+          addCustomColor={addCustomColor}
+          deleteCustomColor={deleteCustomColor}
+          isDeleteCustomMode={isDeleteCustomMode}
+          toggleDeleteCustomMode={toggleDeleteCustomMode}
+          hasCustomColors={hasCustomColors}
         />
+        {/* Export (PNG, PDF, XML, CSV) */}
         <Export />
       </aside>
 
       <main className="col-span-12 lg:col-span-8">
+        {/* Preview */}
         <Preview />
       </main>
     </div>
