@@ -2,7 +2,7 @@ import React from "react";
 import { Upload } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-const Preview = ({ croppedImageUrl }) => {
+const Preview = ({ croppedImageUrl, imageFilter }) => {
   return (
     <div className="sticky top-22">
       <Card className="p-2 rounded-none">
@@ -13,6 +13,7 @@ const Preview = ({ croppedImageUrl }) => {
                 src={croppedImageUrl}
                 alt="Cropped image preview"
                 className="w-full h-full object-cover"
+                style={{ filter: imageFilter }}
               />
             </div>
           ) : (

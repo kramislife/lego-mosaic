@@ -15,6 +15,7 @@ const UploadImage = ({
   handleImageLoad,
   onCropComplete,
   handleRemoveImage,
+  imageFilter,
 }) => {
   return (
     <Card className="gap-3">
@@ -45,7 +46,12 @@ const UploadImage = ({
               aspect={1}
               ruleOfThirds
             >
-              <img src={imageSrc} alt="Selected" onLoad={handleImageLoad} />
+              <img
+                src={imageSrc}
+                alt="Selected"
+                onLoad={handleImageLoad}
+                style={{ filter: imageFilter }}
+              />
             </ReactCrop>
           </div>
         ) : (

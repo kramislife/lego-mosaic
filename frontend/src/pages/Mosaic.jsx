@@ -39,6 +39,7 @@ const Mosaic = () => {
     setBrightness,
     contrast,
     setContrast,
+    imageFilter,
     pixelMode,
     setPixelMode,
     colors,
@@ -72,6 +73,7 @@ const Mosaic = () => {
           handleImageLoad={handleImageLoad}
           onCropComplete={onCropComplete}
           handleRemoveImage={handleRemoveImage}
+          imageFilter={imageFilter}
         />
         {/* Adjust Base Grid & Resolution */}
         <Resolution
@@ -125,7 +127,7 @@ const Mosaic = () => {
 
       <main className="col-span-12 lg:col-span-8">
         {/* Preview */}
-        <Preview croppedImageUrl={croppedImageUrl} />
+        <Preview croppedImageUrl={croppedImageUrl} imageFilter={imageFilter} />
       </main>
     </div>
   );

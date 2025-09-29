@@ -168,6 +168,34 @@ export const useMosaic = () => {
   const [brightness, setBrightness] = useState(0);
   const [contrast, setContrast] = useState(0);
 
+  // Generate CSS filter string from adjustment values
+  const imageFilter = useMemo(() => {
+    const filters = [];
+
+    if (hue !== 0) {
+      filters.push(`hue-rotate(${hue}deg)`);
+    }
+
+    if (saturation !== 0) {
+      const saturationValue = 1 + saturation / 100;
+      filters.push(`saturate(${saturationValue})`);
+    }
+
+    if (brightness !== 0) {
+      // Map brightness from -100 to +100 to a range of 0.3 to 1.7
+      const brightnessValue = 1 + (brightness / 100) * 0.7;
+      filters.push(`brightness(${brightnessValue})`);
+    }
+
+    if (contrast !== 0) {
+      // Map contrast from -100 to +100 to a range of 0.3 to 1.7
+      const contrastValue = 1 + (contrast / 100) * 0.7;
+      filters.push(`contrast(${contrastValue})`);
+    }
+
+    return filters.length > 0 ? filters.join(" ") : "none";
+  }, [hue, saturation, brightness, contrast]);
+
   // =================================== Pixel Display Mode ==================================
   const [pixelMode, setPixelMode] = useState("square");
 
@@ -190,7 +218,7 @@ export const useMosaic = () => {
     );
   }, [colorsData]);
 
-  const [activeColorId, setActiveColorId] = useState(colors?.[0]?.id);
+  const [activeColorId, setActiveColorId] = useState(null);
   const [tool, setTool] = useState("paint");
   const [customName, setCustomName] = useState("");
   const [customHex, setCustomHex] = useState("");
@@ -295,8 +323,8 @@ export const useMosaic = () => {
     }
   }, [paletteColors]);
 
+  // ===================================== Return =====================================
   return {
-    // image attachment
     imageSrc,
     setImageSrc,
     crop,
@@ -307,9 +335,8 @@ export const useMosaic = () => {
     handleImageLoad,
     onCropComplete,
     handleRemoveImage,
-
-    // dimensions & grid
     baseGrid,
+    setBaseGrid,
     width,
     setWidth,
     height,
@@ -321,8 +348,6 @@ export const useMosaic = () => {
     rows,
     clampToAllowed,
     onSelectBase,
-
-    // adjustments
     hue,
     setHue,
     saturation,
@@ -331,12 +356,8 @@ export const useMosaic = () => {
     setBrightness,
     contrast,
     setContrast,
-
-    // pixel mode
     pixelMode,
     setPixelMode,
-
-    // color management
     colors: paletteColors,
     colorsLoading,
     colorsError,
@@ -353,6 +374,7 @@ export const useMosaic = () => {
     isDeleteCustomMode,
     toggleDeleteCustomMode,
     hasCustomColors,
+    imageFilter,
   };
 };
 
