@@ -58,6 +58,7 @@ const Mosaic = () => {
     isDeleteCustomMode,
     toggleDeleteCustomMode,
     hasCustomColors,
+    exportColorsToCSV,
   } = useMosaic();
 
   return (
@@ -120,6 +121,7 @@ const Mosaic = () => {
           isDeleteCustomMode={isDeleteCustomMode}
           toggleDeleteCustomMode={toggleDeleteCustomMode}
           hasCustomColors={hasCustomColors}
+          exportColorsToCSV={exportColorsToCSV}
         />
         {/* Export (PNG, PDF, XML, CSV) */}
         <Export />

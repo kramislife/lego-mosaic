@@ -314,6 +314,42 @@ export const useMosaic = () => {
     setIsDeleteCustomMode((prev) => !prev);
   }, []);
 
+  // Export colors to CSV
+  const exportColorsToCSV = useCallback(() => {
+    try {
+      // Prepare CSV data with all colors (custom + default)
+      const csvData = paletteColors.map((color) => ({
+        color_name: color.name,
+        hex_code: color.hex,
+      }));
+
+      // Convert to CSV format
+      const headers = "Color Name,Hex Code\n";
+      const csvContent =
+        headers +
+        csvData
+          .map((row) => `"${row.color_name}","${row.hex_code}"`)
+          .join("\n");
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "mosaic-colors.csv");
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Colors exported successfully");
+    } catch (error) {
+      console.error("Error exporting colors:", error);
+      toast.error("Failed to export colors");
+    }
+  }, [paletteColors]);
+
   // Ensure first available color is set as the active color whenever the palette changes
   useEffect(() => {
     const firstId =
@@ -374,6 +410,7 @@ export const useMosaic = () => {
     isDeleteCustomMode,
     toggleDeleteCustomMode,
     hasCustomColors,
+    exportColorsToCSV,
     imageFilter,
   };
 };
