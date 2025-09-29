@@ -13,11 +13,11 @@ const Mosaic = () => {
     imageSrc,
     crop,
     setCrop,
-    zoom,
-    setZoom,
+    croppedImageUrl,
     fileInputRef,
     handleFileSelect,
     handleImageLoad,
+    onCropComplete,
     handleRemoveImage,
     baseGrid,
     width,
@@ -67,11 +67,10 @@ const Mosaic = () => {
           imageSrc={imageSrc}
           crop={crop}
           setCrop={setCrop}
-          zoom={zoom}
-          setZoom={setZoom}
           fileInputRef={fileInputRef}
           handleFileSelect={handleFileSelect}
           handleImageLoad={handleImageLoad}
+          onCropComplete={onCropComplete}
           handleRemoveImage={handleRemoveImage}
         />
         {/* Adjust Base Grid & Resolution */}
@@ -126,7 +125,7 @@ const Mosaic = () => {
 
       <main className="col-span-12 lg:col-span-8">
         {/* Preview */}
-        <Preview />
+        <Preview croppedImageUrl={croppedImageUrl} />
       </main>
     </div>
   );

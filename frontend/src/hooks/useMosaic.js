@@ -7,8 +7,9 @@ export const useMosaic = () => {
   // ============================== Image Attachment ===============================
   const [imageSrc, setImageSrc] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+  const [croppedImageUrl, setCroppedImageUrl] = useState(null);
   const fileInputRef = useRef(null);
+  const imageRef = useRef(null);
 
   // Validate file type, accept only JPG, JPEG, PNG
   const handleFileSelect = useCallback((event) => {
@@ -42,10 +43,64 @@ export const useMosaic = () => {
   const handleImageLoad = useCallback(
     (event) => {
       const { width, height } = event.currentTarget;
+      imageRef.current = event.currentTarget;
       const centered = getCenteredSquareCrop(width, height);
       setCrop(centered);
     },
     [getCenteredSquareCrop]
+  );
+
+  // Generate cropped image from current crop
+  const getCroppedImg = useCallback((image, crop, fileName) => {
+    const canvas = document.createElement("canvas");
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext("2d");
+
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height
+    );
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          console.error("Canvas is empty");
+          return;
+        }
+        blob.name = fileName;
+        const fileUrl = URL.createObjectURL(blob);
+        resolve(fileUrl);
+      }, "image/jpeg");
+    });
+  }, []);
+
+  // Auto-generate cropped image when crop changes
+  const onCropComplete = useCallback(
+    async (crop) => {
+      if (imageRef.current && crop.width && crop.height) {
+        try {
+          const croppedImageUrl = await getCroppedImg(
+            imageRef.current,
+            crop,
+            "cropped-image.jpeg"
+          );
+          setCroppedImageUrl(croppedImageUrl);
+        } catch (error) {
+          console.error("Error generating cropped image:", error);
+        }
+      }
+    },
+    [getCroppedImg]
   );
 
   // Remove image when user click on cancel button
@@ -53,13 +108,16 @@ export const useMosaic = () => {
     if (imageSrc) {
       URL.revokeObjectURL(imageSrc);
     }
+    if (croppedImageUrl) {
+      URL.revokeObjectURL(croppedImageUrl);
+    }
     setImageSrc(null);
+    setCroppedImageUrl(null);
     setCrop({ x: 0, y: 0 });
-    setZoom(1);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }, [imageSrc]);
+  }, [imageSrc, croppedImageUrl]);
 
   // =============================== Resolutions & Grid System ===============================
   const [baseGrid, setBaseGrid] = useState(16);
@@ -243,11 +301,11 @@ export const useMosaic = () => {
     setImageSrc,
     crop,
     setCrop,
-    zoom,
-    setZoom,
+    croppedImageUrl,
     fileInputRef,
     handleFileSelect,
     handleImageLoad,
+    onCropComplete,
     handleRemoveImage,
 
     // dimensions & grid
