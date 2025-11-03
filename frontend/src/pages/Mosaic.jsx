@@ -3,7 +3,7 @@ import UploadImage from "@/components/mosaic/UploadImage";
 import Resolution from "@/components/mosaic/Resolution";
 import Adjustment from "@/components/mosaic/Adjustment";
 import PixelMode from "@/components/mosaic/PixelMode";
-import ColorManagement from "@/components/mosaic/ColorManagement";
+import ColorManagement from "@/components/mosaic/ColorManagement/ColorManagement";
 import Export from "@/components/mosaic/Export";
 import Preview from "@/components/mosaic/Preview";
 import { useMosaic } from "@/hooks/useMosaic";
@@ -43,8 +43,6 @@ const Mosaic = () => {
     pixelMode,
     setPixelMode,
     colors,
-    colorsLoading,
-    colorsError,
     activeColorId,
     setActiveColorId,
     tool,
@@ -59,6 +57,21 @@ const Mosaic = () => {
     toggleDeleteCustomMode,
     hasCustomColors,
     exportColorsToCSV,
+    exportOpen,
+    setExportOpen,
+    exportMode,
+    setExportMode,
+    selectedIds,
+    toggleId,
+    selectGroup,
+    selectAll,
+    clearAll,
+    builtInColors,
+    customColors,
+    totalCount,
+    builtInCount,
+    customCount,
+    handleConfirmExport,
   } = useMosaic();
 
   return (
@@ -108,8 +121,6 @@ const Mosaic = () => {
           tool={tool}
           setTool={setTool}
           colors={colors}
-          colorsLoading={colorsLoading}
-          colorsError={colorsError}
           activeColorId={activeColorId}
           setActiveColorId={setActiveColorId}
           customName={customName}
@@ -122,6 +133,21 @@ const Mosaic = () => {
           toggleDeleteCustomMode={toggleDeleteCustomMode}
           hasCustomColors={hasCustomColors}
           exportColorsToCSV={exportColorsToCSV}
+          exportOpen={exportOpen}
+          setExportOpen={setExportOpen}
+          exportMode={exportMode}
+          setExportMode={setExportMode}
+          selectedIds={selectedIds}
+          toggleId={toggleId}
+          selectGroup={selectGroup}
+          selectAll={selectAll}
+          clearAll={clearAll}
+          builtInColors={builtInColors}
+          customColors={customColors}
+          totalCount={totalCount}
+          builtInCount={builtInCount}
+          customCount={customCount}
+          handleConfirmExport={handleConfirmExport}
         />
         {/* Export (PNG, PDF, XML, CSV) */}
         <Export />

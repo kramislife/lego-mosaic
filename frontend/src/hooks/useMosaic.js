@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { useGetColorsQuery } from "@/redux/api/colorApi";
+import { LEGO_COLORS } from "@/constant/colorConfig";
 import { centerCrop, makeAspectCrop } from "react-image-crop";
 
 export const useMosaic = () => {
@@ -201,22 +201,7 @@ export const useMosaic = () => {
 
   // ==================================== Color Management ===================================
 
-  // Get colors via api from mocsupply.com
-  const {
-    data: colorsData,
-    isLoading: colorsLoading,
-    error: colorsError,
-  } = useGetColorsQuery();
-
-  const colors = useMemo(() => {
-    return (
-      colorsData?.colors?.map((color) => ({
-        id: color._id,
-        name: color.color_name,
-        hex: color.hex_code,
-      })) || []
-    );
-  }, [colorsData]);
+  const colors = useMemo(() => LEGO_COLORS, []);
 
   const [activeColorId, setActiveColorId] = useState(null);
   const [tool, setTool] = useState("paint");
@@ -249,6 +234,19 @@ export const useMosaic = () => {
 
   // Flag for presence of any custom colors (for UI toggles)
   const hasCustomColors = customColors.length > 0;
+
+  // built-in and custom colors
+  const builtInColors = useMemo(
+    () => paletteColors.filter((c) => !c.isCustom),
+    [paletteColors]
+  );
+  const onlyCustomColors = useMemo(
+    () => paletteColors.filter((c) => c.isCustom),
+    [paletteColors]
+  );
+  const totalCount = paletteColors.length;
+  const builtInCount = builtInColors.length;
+  const customCount = onlyCustomColors.length;
 
   // Validate hex code
   const isValidHex = useCallback((hex) => /^#([0-9A-Fa-f]{6})$/.test(hex), []);
@@ -314,41 +312,122 @@ export const useMosaic = () => {
     setIsDeleteCustomMode((prev) => !prev);
   }, []);
 
-  // Export colors to CSV
-  const exportColorsToCSV = useCallback(() => {
-    try {
-      // Prepare CSV data with all colors (custom + default)
-      const csvData = paletteColors.map((color) => ({
-        color_name: color.name,
-        hex_code: color.hex,
-      }));
+  // Export colors to CSV (optionally accept a subset to export)
+  const exportColorsToCSV = useCallback(
+    (colorsToExport) => {
+      try {
+        // Prepare CSV data with all colors (custom + default)
+        const exportList =
+          Array.isArray(colorsToExport) && colorsToExport.length
+            ? colorsToExport
+            : paletteColors;
+        const csvData = exportList.map((color) => ({
+          color_name: color.name,
+          hex_code: color.hex,
+        }));
 
-      // Convert to CSV format
-      const headers = "Color Name,Hex Code\n";
-      const csvContent =
-        headers +
-        csvData
-          .map((row) => `"${row.color_name}","${row.hex_code}"`)
-          .join("\n");
+        // Convert to CSV format
+        const headers = "Color Name,Hex Code\n";
+        const csvContent =
+          headers +
+          csvData
+            .map((row) => `"${row.color_name}","${row.hex_code}"`)
+            .join("\n");
 
-      // Create and download file
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", "mosaic-colors.csv");
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+        // Create and download file
+        const blob = new Blob([csvContent], {
+          type: "text/csv;charset=utf-8;",
+        });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "mosaic-colors.csv");
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Error exporting colors:", error);
+        toast.error("Failed to export colors");
+      }
+    },
+    [paletteColors]
+  );
 
-      toast.success("Colors exported successfully");
-    } catch (error) {
-      console.error("Error exporting colors:", error);
-      toast.error("Failed to export colors");
-    }
+  // ============================= Export Color Dialog State/Actions =============================
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportMode, setExportMode] = useState("all"); // all | custom | pick
+  const [selectedIds, setSelectedIds] = useState(
+    () => new Set(paletteColors.map((c) => c.id))
+  );
+
+  // Reset selected IDs when palette changes
+  useEffect(() => {
+    setSelectedIds(new Set(paletteColors.map((c) => c.id)));
   }, [paletteColors]);
+
+  const toggleId = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectGroup = useCallback((list, value) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const c of list) {
+        if (value) next.add(c.id);
+        else next.delete(c.id);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(
+    () => setSelectedIds(new Set(paletteColors.map((c) => c.id))),
+    [paletteColors]
+  );
+  const clearAll = useCallback(() => setSelectedIds(new Set()), []);
+
+  const setMode = useCallback(
+    (mode) => {
+      setExportMode(mode);
+      if (mode === "all") {
+        selectAll();
+      } else if (mode === "custom") {
+        setSelectedIds(new Set(onlyCustomColors.map((c) => c.id)));
+      }
+    },
+    [onlyCustomColors, selectAll]
+  );
+
+  // Guard: if no custom colors, do not allow staying on custom mode
+  useEffect(() => {
+    if (exportOpen && exportMode === "custom" && customCount === 0) {
+      setMode("all");
+    }
+  }, [exportOpen, exportMode, customCount, setMode]);
+
+  const handleConfirmExport = useCallback(() => {
+    let toExport = paletteColors;
+    if (exportMode === "custom") {
+      toExport = onlyCustomColors;
+    } else if (exportMode === "pick") {
+      toExport = paletteColors.filter((c) => selectedIds.has(c.id));
+    }
+    exportColorsToCSV(toExport);
+    setExportOpen(false);
+  }, [
+    exportMode,
+    onlyCustomColors,
+    paletteColors,
+    selectedIds,
+    exportColorsToCSV,
+  ]);
 
   // Ensure first available color is set as the active color whenever the palette changes
   useEffect(() => {
@@ -395,8 +474,6 @@ export const useMosaic = () => {
     pixelMode,
     setPixelMode,
     colors: paletteColors,
-    colorsLoading,
-    colorsError,
     activeColorId,
     setActiveColorId,
     tool,
@@ -412,6 +489,22 @@ export const useMosaic = () => {
     hasCustomColors,
     exportColorsToCSV,
     imageFilter,
+    // export color dialog props
+    exportOpen,
+    setExportOpen,
+    exportMode,
+    setExportMode: setMode,
+    selectedIds,
+    toggleId,
+    selectGroup,
+    selectAll,
+    clearAll,
+    builtInColors,
+    customColors: onlyCustomColors,
+    totalCount,
+    builtInCount,
+    customCount,
+    handleConfirmExport,
   };
 };
 
