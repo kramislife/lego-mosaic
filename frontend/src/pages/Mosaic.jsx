@@ -13,11 +13,11 @@ const Mosaic = () => {
     imageSrc,
     crop,
     setCrop,
-    zoom,
-    setZoom,
+    croppedImageUrl,
     fileInputRef,
     handleFileSelect,
     handleImageLoad,
+    onCropComplete,
     handleRemoveImage,
     baseGrid,
     width,
@@ -39,6 +39,7 @@ const Mosaic = () => {
     setBrightness,
     contrast,
     setContrast,
+    imageFilter,
     pixelMode,
     setPixelMode,
     colors,
@@ -57,6 +58,7 @@ const Mosaic = () => {
     isDeleteCustomMode,
     toggleDeleteCustomMode,
     hasCustomColors,
+    exportColorsToCSV,
   } = useMosaic();
 
   return (
@@ -67,12 +69,12 @@ const Mosaic = () => {
           imageSrc={imageSrc}
           crop={crop}
           setCrop={setCrop}
-          zoom={zoom}
-          setZoom={setZoom}
           fileInputRef={fileInputRef}
           handleFileSelect={handleFileSelect}
           handleImageLoad={handleImageLoad}
+          onCropComplete={onCropComplete}
           handleRemoveImage={handleRemoveImage}
+          imageFilter={imageFilter}
         />
         {/* Adjust Base Grid & Resolution */}
         <Resolution
@@ -119,6 +121,7 @@ const Mosaic = () => {
           isDeleteCustomMode={isDeleteCustomMode}
           toggleDeleteCustomMode={toggleDeleteCustomMode}
           hasCustomColors={hasCustomColors}
+          exportColorsToCSV={exportColorsToCSV}
         />
         {/* Export (PNG, PDF, XML, CSV) */}
         <Export />
@@ -126,7 +129,7 @@ const Mosaic = () => {
 
       <main className="col-span-12 lg:col-span-8">
         {/* Preview */}
-        <Preview />
+        <Preview croppedImageUrl={croppedImageUrl} imageFilter={imageFilter} />
       </main>
     </div>
   );

@@ -33,6 +33,7 @@ const ColorManagement = ({
   isDeleteCustomMode,
   toggleDeleteCustomMode,
   hasCustomColors,
+  exportColorsToCSV,
 }) => {
   if (colorsLoading) {
     return (
@@ -108,6 +109,7 @@ const ColorManagement = ({
             type="button"
             variant="outline"
             className="grow justify-center gap-2"
+            onClick={exportColorsToCSV}
           >
             <Download className="h-4 w-4" /> Export CSV
           </Button>

@@ -15,7 +15,6 @@ const PixelMode = ({ pixelMode, setPixelMode }) => {
           <Button
             type="button"
             variant={pixelMode === "square" ? "destructive" : "outline"}
-            active={pixelMode === "square"}
             onClick={() => setPixelMode("square")}
           >
             <Square className="size-5" />

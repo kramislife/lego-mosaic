@@ -1,10 +1,7 @@
 import React from "react";
-import { Image, Upload } from "lucide-react";
+import { Image, Upload, X } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
@@ -13,64 +10,49 @@ const UploadImage = ({
   imageSrc,
   crop,
   setCrop,
-  zoom,
-  setZoom,
   fileInputRef,
   handleFileSelect,
   handleImageLoad,
+  onCropComplete,
   handleRemoveImage,
+  imageFilter,
 }) => {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-2">
-        <Image className="size-5 text-primary" />
-        <CardTitle className="font-sans">Image Settings</CardTitle>
+    <Card className="gap-3">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div className="flex flex-row items-center gap-2">
+          <Image className="size-5 text-primary" />
+          <CardTitle className="font-sans">Image Settings</CardTitle>
+        </div>
+        {imageSrc && (
+          <Button
+            variant="ghost"
+            onClick={handleRemoveImage}
+            className="p-0 hover:text-destructive hover:bg-transparent"
+            title="Remove image"
+          >
+            Cancel
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         {imageSrc ? (
           <div>
             {/* Image Attachment */}
-            <ReactCrop crop={crop} onChange={setCrop} aspect={1} ruleOfThirds>
+            <ReactCrop
+              crop={crop}
+              onChange={setCrop}
+              onComplete={onCropComplete}
+              aspect={1}
+              ruleOfThirds
+            >
               <img
                 src={imageSrc}
                 alt="Selected"
                 onLoad={handleImageLoad}
-                style={{
-                  transform: `scale(${zoom})`,
-                  transformOrigin: "center",
-                }}
+                style={{ filter: imageFilter }}
               />
             </ReactCrop>
-
-            {/* Zoom Slider */}
-            <div className="space-y-3 mt-2">
-              <div className="flex items-center justify-between">
-                <Label>Zoom</Label>
-                <Badge variant="destructive">{zoom.toFixed(1)}x</Badge>
-              </div>
-              <Slider
-                min={1}
-                max={3}
-                step={0.1}
-                value={[zoom]}
-                onValueChange={([value]) => setZoom(value)}
-                className="w-full"
-              />
-            </div>
-
-            {/* Action Buttons - Cancel & Crop Image */}
-            <div className="flex gap-2 mt-5">
-              <Button
-                variant="outline"
-                onClick={handleRemoveImage}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button variant="destructive" className="flex-1">
-                Crop Image
-              </Button>
-            </div>
           </div>
         ) : (
           <div className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 p-5 text-center">

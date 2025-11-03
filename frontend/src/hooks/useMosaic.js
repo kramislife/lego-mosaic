@@ -7,8 +7,9 @@ export const useMosaic = () => {
   // ============================== Image Attachment ===============================
   const [imageSrc, setImageSrc] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+  const [croppedImageUrl, setCroppedImageUrl] = useState(null);
   const fileInputRef = useRef(null);
+  const imageRef = useRef(null);
 
   // Validate file type, accept only JPG, JPEG, PNG
   const handleFileSelect = useCallback((event) => {
@@ -42,10 +43,64 @@ export const useMosaic = () => {
   const handleImageLoad = useCallback(
     (event) => {
       const { width, height } = event.currentTarget;
+      imageRef.current = event.currentTarget;
       const centered = getCenteredSquareCrop(width, height);
       setCrop(centered);
     },
     [getCenteredSquareCrop]
+  );
+
+  // Generate cropped image from current crop
+  const getCroppedImg = useCallback((image, crop, fileName) => {
+    const canvas = document.createElement("canvas");
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext("2d");
+
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height
+    );
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          console.error("Canvas is empty");
+          return;
+        }
+        blob.name = fileName;
+        const fileUrl = URL.createObjectURL(blob);
+        resolve(fileUrl);
+      }, "image/jpeg");
+    });
+  }, []);
+
+  // Auto-generate cropped image when crop changes
+  const onCropComplete = useCallback(
+    async (crop) => {
+      if (imageRef.current && crop.width && crop.height) {
+        try {
+          const croppedImageUrl = await getCroppedImg(
+            imageRef.current,
+            crop,
+            "cropped-image.jpeg"
+          );
+          setCroppedImageUrl(croppedImageUrl);
+        } catch (error) {
+          console.error("Error generating cropped image:", error);
+        }
+      }
+    },
+    [getCroppedImg]
   );
 
   // Remove image when user click on cancel button
@@ -53,13 +108,16 @@ export const useMosaic = () => {
     if (imageSrc) {
       URL.revokeObjectURL(imageSrc);
     }
+    if (croppedImageUrl) {
+      URL.revokeObjectURL(croppedImageUrl);
+    }
     setImageSrc(null);
+    setCroppedImageUrl(null);
     setCrop({ x: 0, y: 0 });
-    setZoom(1);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }, [imageSrc]);
+  }, [imageSrc, croppedImageUrl]);
 
   // =============================== Resolutions & Grid System ===============================
   const [baseGrid, setBaseGrid] = useState(16);
@@ -110,6 +168,34 @@ export const useMosaic = () => {
   const [brightness, setBrightness] = useState(0);
   const [contrast, setContrast] = useState(0);
 
+  // Generate CSS filter string from adjustment values
+  const imageFilter = useMemo(() => {
+    const filters = [];
+
+    if (hue !== 0) {
+      filters.push(`hue-rotate(${hue}deg)`);
+    }
+
+    if (saturation !== 0) {
+      const saturationValue = 1 + saturation / 100;
+      filters.push(`saturate(${saturationValue})`);
+    }
+
+    if (brightness !== 0) {
+      // Map brightness from -100 to +100 to a range of 0.3 to 1.7
+      const brightnessValue = 1 + (brightness / 100) * 0.7;
+      filters.push(`brightness(${brightnessValue})`);
+    }
+
+    if (contrast !== 0) {
+      // Map contrast from -100 to +100 to a range of 0.3 to 1.7
+      const contrastValue = 1 + (contrast / 100) * 0.7;
+      filters.push(`contrast(${contrastValue})`);
+    }
+
+    return filters.length > 0 ? filters.join(" ") : "none";
+  }, [hue, saturation, brightness, contrast]);
+
   // =================================== Pixel Display Mode ==================================
   const [pixelMode, setPixelMode] = useState("square");
 
@@ -132,7 +218,7 @@ export const useMosaic = () => {
     );
   }, [colorsData]);
 
-  const [activeColorId, setActiveColorId] = useState(colors?.[0]?.id);
+  const [activeColorId, setActiveColorId] = useState(null);
   const [tool, setTool] = useState("paint");
   const [customName, setCustomName] = useState("");
   const [customHex, setCustomHex] = useState("");
@@ -228,6 +314,42 @@ export const useMosaic = () => {
     setIsDeleteCustomMode((prev) => !prev);
   }, []);
 
+  // Export colors to CSV
+  const exportColorsToCSV = useCallback(() => {
+    try {
+      // Prepare CSV data with all colors (custom + default)
+      const csvData = paletteColors.map((color) => ({
+        color_name: color.name,
+        hex_code: color.hex,
+      }));
+
+      // Convert to CSV format
+      const headers = "Color Name,Hex Code\n";
+      const csvContent =
+        headers +
+        csvData
+          .map((row) => `"${row.color_name}","${row.hex_code}"`)
+          .join("\n");
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "mosaic-colors.csv");
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Colors exported successfully");
+    } catch (error) {
+      console.error("Error exporting colors:", error);
+      toast.error("Failed to export colors");
+    }
+  }, [paletteColors]);
+
   // Ensure first available color is set as the active color whenever the palette changes
   useEffect(() => {
     const firstId =
@@ -237,21 +359,20 @@ export const useMosaic = () => {
     }
   }, [paletteColors]);
 
+  // ===================================== Return =====================================
   return {
-    // image attachment
     imageSrc,
     setImageSrc,
     crop,
     setCrop,
-    zoom,
-    setZoom,
+    croppedImageUrl,
     fileInputRef,
     handleFileSelect,
     handleImageLoad,
+    onCropComplete,
     handleRemoveImage,
-
-    // dimensions & grid
     baseGrid,
+    setBaseGrid,
     width,
     setWidth,
     height,
@@ -263,8 +384,6 @@ export const useMosaic = () => {
     rows,
     clampToAllowed,
     onSelectBase,
-
-    // adjustments
     hue,
     setHue,
     saturation,
@@ -273,12 +392,8 @@ export const useMosaic = () => {
     setBrightness,
     contrast,
     setContrast,
-
-    // pixel mode
     pixelMode,
     setPixelMode,
-
-    // color management
     colors: paletteColors,
     colorsLoading,
     colorsError,
@@ -295,6 +410,8 @@ export const useMosaic = () => {
     isDeleteCustomMode,
     toggleDeleteCustomMode,
     hasCustomColors,
+    exportColorsToCSV,
+    imageFilter,
   };
 };
 
