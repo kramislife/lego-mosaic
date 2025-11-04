@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useThemeToggle } from "@/hooks/useToggleTheme";
 import Guide from "@/pages/Guide";
+import Auth from "@/pages/Auth";
 
 const Header = () => {
   const { darkMode, toggleDarkMode } = useThemeToggle();
@@ -15,11 +16,21 @@ const Header = () => {
             <LayoutGrid />
           </span>
           <h1 className="font-sans text-2xl font-semibold">
-            Lego Mosaic Studio
+            LEGO Mosaic Studio
           </h1>
         </div>
 
         <div className="flex items-center gap-1">
+          {/* Grid overlay */}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Show or hide grid"
+            title="Toggle grid overlay"
+          >
+            <Grid3X3 />
+          </Button>
+
           {/* Guide */}
           <Dialog>
             <DialogTrigger asChild>
@@ -48,15 +59,15 @@ const Header = () => {
             {darkMode ? <Moon /> : <Sun />}
           </Button>
 
-          {/* Grid overlay */}
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Show or hide grid"
-            title="Toggle grid overlay"
-          >
-            <Grid3X3 />
-          </Button>
+          {/* Log in / Register */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="destructive" aria-label="Log in" title="Log in">
+                Log In
+              </Button>
+            </DialogTrigger>
+            <Auth />
+          </Dialog>
         </div>
       </div>
     </header>
