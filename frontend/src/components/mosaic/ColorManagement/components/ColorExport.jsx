@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 const ColorExport = ({
@@ -36,9 +37,12 @@ const ColorExport = ({
     <div className="space-y-5">
       <DialogHeader>
         <DialogTitle className="font-sans mb-3">
-          Choose colors to export
+          Choose Colors to Export
         </DialogTitle>
       </DialogHeader>
+      <DialogDescription className="sr-only">
+        Choose the colors you want to export from the list below.
+      </DialogDescription>
 
       {/* Mode selector */}
       <div className="flex flex-col sm:flex-row gap-2">
