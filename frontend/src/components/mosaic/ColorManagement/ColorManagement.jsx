@@ -13,15 +13,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import LoadingState from "@/components/layout/fallback/LoadingState";
-import ErrorState from "@/components/layout/fallback/ErrorState";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import ColorExport from "@/components/mosaic/ColorManagement/components/ColorExport";
+import { isValidHex } from "@/utils/colors/colorValidator";
 
 const ColorManagement = ({
   tool,
   setTool,
   colors,
-  colorsLoading,
-  colorsError,
   activeColorId,
   setActiveColorId,
   customName,
@@ -33,27 +32,24 @@ const ColorManagement = ({
   isDeleteCustomMode,
   toggleDeleteCustomMode,
   hasCustomColors,
-  exportColorsToCSV,
+
+  // export dialog props from hook
+  exportOpen,
+  setExportOpen,
+  exportMode,
+  setExportMode,
+  selectedIds,
+  toggleId,
+  selectGroup,
+  selectAll,
+  clearAll,
+  builtInColors,
+  customColors,
+  totalCount,
+  builtInCount,
+  customCount,
+  handleConfirmExport,
 }) => {
-  if (colorsLoading) {
-    return (
-      <LoadingState
-        title="Color Management"
-        message="Loading colors..."
-        icon={Palette}
-      />
-    );
-  }
-
-  if (colorsError) {
-    return (
-      <ErrorState
-        title="Error Loading Colors"
-        message="Please refresh the page or try again later"
-      />
-    );
-  }
-
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
@@ -105,14 +101,35 @@ const ColorManagement = ({
           </Button>
 
           {/* Export CSV */}
-          <Button
-            type="button"
-            variant="outline"
-            className="grow justify-center gap-2"
-            onClick={exportColorsToCSV}
-          >
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
+          <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="grow justify-center gap-2"
+              >
+                <Download className="h-4 w-4" /> Export CSV
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+              <ColorExport
+                exportMode={exportMode}
+                setExportMode={setExportMode}
+                selectedIds={selectedIds}
+                toggleId={toggleId}
+                selectGroup={selectGroup}
+                selectAll={selectAll}
+                clearAll={clearAll}
+                builtInColors={builtInColors}
+                customColors={customColors}
+                totalCount={totalCount}
+                builtInCount={builtInCount}
+                customCount={customCount}
+                onCancel={() => setExportOpen(false)}
+                onConfirm={handleConfirmExport}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="space-y-3">
@@ -164,7 +181,6 @@ const ColorManagement = ({
         </div>
 
         <div className="space-y-3">
-          
           {/* Custom color */}
           <Label>Color name</Label>
           <Input
@@ -187,7 +203,7 @@ const ColorManagement = ({
             />
             <Input
               type="color"
-              value={customHex}
+              value={isValidHex(customHex) ? customHex : "#000000"}
               onChange={(e) => setCustomHex(e.target.value)}
               className="w-15 p-1 cursor-pointer"
               title="Click to open color picker"

@@ -1,18 +1,25 @@
 import React from "react";
 import { Lightbulb, Zap } from "lucide-react";
-import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { GUIDE_STEPS, PRO_FEATURES, PRO_TIPS } from "@/constant/GuideConfig";
+import { GUIDE_STEPS, PRO_FEATURES, PRO_TIPS } from "@/constant/guideConfig";
 
 const Guide = () => {
   return (
     <div>
       <DialogHeader>
         <DialogTitle className="text-xl font-sans pb-5">
-          LEGO Mosaic Generator Guide
+          LEGO Mosaic Guide
         </DialogTitle>
       </DialogHeader>
+      <DialogDescription className="sr-only">
+        This is a guide for the LEGO Mosaic Studio.
+      </DialogDescription>
 
       {/* Welcome Section */}
       <Card className="mb-5 bg-primary/10 border-primary/20">
@@ -21,7 +28,7 @@ const Guide = () => {
             <Zap className="size-6 text-white" />
           </div>
           <h2 className="text-xl font-bold font-sans pb-2">
-            Welcome to LEGO Mosaic Creator!
+            Welcome to LEGO Mosaic Studio!
           </h2>
           <p className="text-muted-foreground">
             Transform your photos into amazing LEGO mosaics with just a few
@@ -57,7 +64,7 @@ const Guide = () => {
             <Label className="text-xl font-sans font-bold">Features</Label>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
             {PRO_FEATURES.map(
               ({ icon: Icon, title, desc, colorClass }, idx) => (
                 <div key={idx} className="text-center p-4">

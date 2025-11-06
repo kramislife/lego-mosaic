@@ -16,8 +16,6 @@ const Resolution = ({
   height,
   onWidth,
   onHeight,
-  cols,
-  rows,
 }) => {
   return (
     <Card>
@@ -78,35 +76,6 @@ const Resolution = ({
             <span>{max}</span>
           </div>
         </div>
-
-        <Card className="text-sm py-3 bg-muted-foreground/5">
-          <CardContent className="px-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-muted-foreground font-mono">
-                Configuration:
-              </Label>
-              <Label className="font-semibold font-mono">
-                {width} × {height}
-              </Label>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label className="text-muted-foreground font-mono">
-                Sections:
-              </Label>
-              <Label className="font-semibold font-mono">
-                {cols} × {rows} ({baseGrid}×{baseGrid})
-              </Label>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label className="text-muted-foreground font-mono">
-                Grid layout:
-              </Label>
-              <Label className="font-semibold font-mono">
-                {cols} × {rows}
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
       </CardContent>
     </Card>
   );
