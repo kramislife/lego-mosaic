@@ -1,0 +1,1 @@
+// - Holds the logic to compute the mosaicGrid from an image using pixelateImage.js

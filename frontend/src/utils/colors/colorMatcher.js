@@ -1,0 +1,1 @@
+// This file handles the logic to match a color to the nearest color in a palette.

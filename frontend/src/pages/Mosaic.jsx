@@ -27,8 +27,6 @@ const Mosaic = () => {
     min,
     max,
     step,
-    cols,
-    rows,
     clampToAllowed,
     onSelectBase,
     hue,
@@ -100,8 +98,6 @@ const Mosaic = () => {
           min={min}
           max={max}
           step={step}
-          cols={cols}
-          rows={rows}
         />
         {/* Adjustments (HSV, Brightness, Contrast) */}
         <Adjustment

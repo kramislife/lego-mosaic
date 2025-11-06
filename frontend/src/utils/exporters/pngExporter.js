@@ -1,0 +1,1 @@
+// This file will be used to export the mosaic as a PNG file

@@ -1,0 +1,1 @@
+// This file will be used to implement logic for concentric square pixel

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import ColorExport from "@/components/mosaic/ColorManagement/components/ColorExport";
+import { isValidHex } from "@/utils/colors/colorValidator";
 
 const ColorManagement = ({
   tool,
@@ -202,7 +203,7 @@ const ColorManagement = ({
             />
             <Input
               type="color"
-              value={customHex}
+              value={isValidHex(customHex) ? customHex : "#000000"}
               onChange={(e) => setCustomHex(e.target.value)}
               className="w-15 p-1 cursor-pointer"
               title="Click to open color picker"
