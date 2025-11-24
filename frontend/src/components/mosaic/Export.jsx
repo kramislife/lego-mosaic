@@ -1,9 +1,14 @@
 import React from "react";
-import { FileDown, ImageDown, FileSpreadsheet, FileText } from "lucide-react";
+import { FileDown, ImageDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-const Export = () => {
+const Export = ({
+  mosaicUrl,
+  onDownloadImage,
+  onDownloadInstructions,
+  canExport = false,
+}) => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center gap-2">
@@ -12,17 +17,21 @@ const Export = () => {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" className="justify-center gap-2">
-            <ImageDown className="size-4" /> PNG
+          <Button
+            variant="outline"
+            className="justify-center gap-2"
+            onClick={onDownloadImage}
+            disabled={!canExport || !mosaicUrl}
+          >
+            <ImageDown className="size-4" /> Download Mosaic
           </Button>
-          <Button variant="outline" className="justify-center gap-2">
-            <FileDown className="size-4" /> PDF
-          </Button>
-          <Button variant="outline" className="justify-center gap-2">
-            <FileText className="size-4" /> XML
-          </Button>
-          <Button variant="outline" className="justify-center gap-2">
-            <FileSpreadsheet className="size-4" /> CSV
+          <Button
+            variant="outline"
+            className="justify-center gap-2"
+            onClick={onDownloadInstructions}
+            disabled={!canExport}
+          >
+            <FileDown className="size-4" /> Download Instructions
           </Button>
         </div>
       </CardContent>

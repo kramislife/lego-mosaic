@@ -1,13 +1,16 @@
 import React from "react";
-import { Sun, Moon, LayoutGrid, Grid3X3, HelpCircle } from "lucide-react";
+import { Sun, Moon, LayoutGrid, HelpCircle, Expand, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useThemeToggle } from "@/hooks/useToggleTheme";
+import { useExpand } from "@/contexts/ExpandContext";
 import Guide from "@/pages/Guide";
 import Auth from "@/pages/Auth";
 
 const Header = () => {
   const { darkMode, toggleDarkMode } = useThemeToggle();
+  const { isExpanded, toggleExpand } = useExpand();
+  
   return (
     <header className="bg-background sticky top-0 z-50 w-full border-b shadow-xs">
       <div className="p-5 flex items-center justify-between">
@@ -21,14 +24,15 @@ const Header = () => {
         </div>
 
         <div className="flex items-center gap-1">
-          {/* Grid overlay */}
+          {/* Full screen */}
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Show or hide grid"
-            title="Toggle grid overlay"
+            aria-label={isExpanded ? "Shrink view" : "Expand view"}
+            title={isExpanded ? "Shrink view" : "Expand view"}
+            onClick={toggleExpand}
           >
-            <Grid3X3 />
+            {isExpanded ? <Minimize2 /> : <Expand />}
           </Button>
 
           {/* Guide */}

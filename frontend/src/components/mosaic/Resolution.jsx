@@ -26,18 +26,18 @@ const Resolution = ({
       <CardContent className="space-y-5">
         <div className="flex items-center gap-2">
           <Button
-            variant={baseGrid === 16 ? "destructive" : "outline"}
-            className="grow justify-center"
-            onClick={() => onSelectBase(16)}
-          >
-            16 × 16 studs
-          </Button>
-          <Button
             variant={baseGrid === 32 ? "destructive" : "outline"}
             className="grow justify-center"
             onClick={() => onSelectBase(32)}
           >
             32 × 32 studs
+          </Button>
+          <Button
+            variant={baseGrid === 16 ? "destructive" : "outline"}
+            className="grow justify-center"
+            onClick={() => onSelectBase(16)}
+          >
+            16 × 16 studs
           </Button>
         </div>
 

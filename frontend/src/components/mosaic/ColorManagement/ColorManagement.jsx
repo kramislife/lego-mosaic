@@ -6,21 +6,39 @@ import {
   Download,
   RotateCcw,
   Palette,
-  Trash2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import ColorExport from "@/components/mosaic/ColorManagement/components/ColorExport";
 import { isValidHex } from "@/utils/colors/colorValidator";
+
+const TOOL_OPTIONS = [
+  { value: "paint", label: "Paint", icon: Brush },
+  { value: "pick", label: "Dropper", icon: Pipette },
+  { value: "erase", label: "Eraser", icon: Eraser },
+];
+
+function formatCount(count) {
+  return new Intl.NumberFormat().format(count ?? 0);
+}
 
 const ColorManagement = ({
   tool,
   setTool,
-  colors,
+  imagePalette,
+  customPaletteUsage,
+  totalPixels,
   activeColorId,
   setActiveColorId,
   customName,
@@ -29,11 +47,6 @@ const ColorManagement = ({
   setCustomHex,
   addCustomColor,
   deleteCustomColor,
-  isDeleteCustomMode,
-  toggleDeleteCustomMode,
-  hasCustomColors,
-
-  // export dialog props from hook
   exportOpen,
   setExportOpen,
   exportMode,
@@ -43,13 +56,16 @@ const ColorManagement = ({
   selectGroup,
   selectAll,
   clearAll,
-  builtInColors,
-  customColors,
-  totalCount,
-  builtInCount,
-  customCount,
   handleConfirmExport,
+  removePaletteColor,
+  resetExcludedColors,
+  mosaicError,
+  availableColors,
+  builtInColorCount,
+  customColorCount,
+  totalColorCount,
 }) => {
+
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
@@ -58,49 +74,58 @@ const ColorManagement = ({
           <CardTitle className="font-sans">Color Management</CardTitle>
         </div>
 
-        {/* Reset colors */}
         <Button
           variant="outline"
           size="sm"
-          aria-label="Reset colors"
-          title="Reset colors"
+          aria-label="Reset removed colors"
+          title="Reset removed colors"
+          onClick={resetExcludedColors}
+          disabled={imagePalette.length === 0}
         >
-          <RotateCcw className="size-4" /> Reset all
+          <RotateCcw className="size-4" /> Reset palette
         </Button>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-6">
         <div className="flex items-center gap-2">
-          {/* Paint */}
-          <Button
-            type="button"
-            variant={tool === "paint" ? "destructive" : "outline"}
-            onClick={() => setTool("paint")}
-            className="grow justify-center"
-          >
-            <Brush className="size-4" /> Paint
-          </Button>
+          <Select value={tool} onValueChange={setTool}>
+            <SelectTrigger className="grow justify-between">
+              <SelectValue placeholder="Select tool" />
+            </SelectTrigger>
+            <SelectContent>
+              {TOOL_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <SelectItem key={value} value={value}>
+                  <span className="flex items-center gap-2">
+                    <Icon className="size-4 text-foreground" /> {label}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          {/* Dropper */}
-          <Button
-            type="button"
-            variant={tool === "pick" ? "destructive" : "outline"}
-            onClick={() => setTool("pick")}
-            className="grow justify-center"
-          >
-            <Pipette className="size-4" /> Dropper
-          </Button>
+          {availableColors.length > 0 && (
+            <Select
+              value={activeColorId || availableColors[0]?.id || ""}
+              onValueChange={setActiveColorId}
+            >
+              <SelectTrigger className="grow justify-between">
+                <SelectValue placeholder="Select color" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableColors.map((color) => (
+                  <SelectItem key={color.id} value={color.id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="size-4 rounded-sm border"
+                        style={{ backgroundColor: color.hex }}
+                      />
+                      <span>{color.name}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
-          {/* Eraser */}
-          <Button
-            type="button"
-            variant={tool === "erase" ? "destructive" : "outline"}
-            onClick={() => setTool("erase")}
-            className="grow justify-center"
-          >
-            <Eraser className="size-4" /> Eraser
-          </Button>
-
-          {/* Export CSV */}
           <Dialog open={exportOpen} onOpenChange={setExportOpen}>
             <DialogTrigger asChild>
               <Button
@@ -120,11 +145,11 @@ const ColorManagement = ({
                 selectGroup={selectGroup}
                 selectAll={selectAll}
                 clearAll={clearAll}
-                builtInColors={builtInColors}
-                customColors={customColors}
-                totalCount={totalCount}
-                builtInCount={builtInCount}
-                customCount={customCount}
+                builtInColors={imagePalette}
+                customColors={customPaletteUsage}
+                totalCount={totalColorCount}
+                builtInCount={builtInColorCount}
+                customCount={customColorCount}
                 onCancel={() => setExportOpen(false)}
                 onConfirm={handleConfirmExport}
               />
@@ -132,56 +157,122 @@ const ColorManagement = ({
           </Dialog>
         </div>
 
-        <div className="space-y-3">
-          <Label>Available Colors</Label>
+        {mosaicError ? (
+          <div className="rounded-md border border-destructive/60 bg-destructive/10 p-3 text-sm text-destructive">
+            Failed to process image colors. Adjust settings or try another
+            image.
+          </div>
+        ) : null}
 
-          {/* If trash button is clicked, display X, otherwise display badge */}
-          <div className="flex flex-wrap gap-1">
-            {colors?.map((color) => (
-              <div key={color.id} className="relative">
-                {color.isCustom &&
-                  (isDeleteCustomMode ? (
+        {customPaletteUsage.length > 0 && (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="font-bold">
+                Custom Colors ({customColorCount})
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                Persistent across images
+              </span>
+            </div>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {customPaletteUsage.map((color) => (
+                <div
+                  key={color.id}
+                  className={`flex items-center gap-1 rounded-md border px-3 py-2 cursor-pointer ${
+                    activeColorId === color.id
+                      ? "border-primary"
+                      : "border-border"
+                  }`}
+                  onClick={() => setActiveColorId(color.id)}
+                >
+                  <span
+                    className="size-8 rounded-md border"
+                    style={{ backgroundColor: color.hex }}
+                  />
+                  <div className="flex flex-col flex-1">
+                    <span className="text-sm font-medium">{color.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {color.hex}
+                    </span>
+                  </div>
+                  <Input
+                    readOnly
+                    value={formatCount(color.count)}
+                    className="w-16 text-center"
+                  />
                     <Button
-                      variant="outline"
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                    variant="ghost"
+                    size="icon"
+                    className="hover:bg-transparent hover:text-primary"
+                    onClick={(event) => {
+                      event.stopPropagation();
                         deleteCustomColor(color.id);
                       }}
-                      className="absolute -top-1 -right-1 size-4 p-0 rounded-full text-destructive leading-none cursor-pointer"
-                      title="Delete custom color"
                     >
-                      ×
+                    <X className="size-4" />
                     </Button>
-                  ) : (
-                    <Badge
-                      className="absolute bottom-5.5 left-4 block size-2.5 p-0 bg-green-500 border-background"
-                      title="Custom color"
-                    />
-                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-                {/* Display color list */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setActiveColorId(color.id)}
-                  aria-label={`${color.name} (${color.hex})`}
-                  title={`${color.name} (${color.hex})`}
-                  className={`size-6 rounded-full ${
+        {imagePalette.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="font-bold">
+                Image Colors ({builtInColorCount})
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                Total studs: {formatCount(totalPixels)}
+              </span>
+            </div>
+            <div className="space-y-2 max-h-90 overflow-y-auto">
+              {imagePalette.map((color) => (
+                <div
+                  key={color.id}
+                  className={`flex items-center gap-1 rounded-md border px-3 py-2 cursor-pointer ${
                     activeColorId === color.id
-                      ? "ring-2 ring-primary"
-                      : "hover:ring-2 hover:ring-accent"
+                      ? "border-primary"
+                      : "border-border"
                   }`}
+                  onClick={() => setActiveColorId(color.id)}
+                >
+                  <span
+                    className="size-8 rounded-md border"
                   style={{ backgroundColor: color.hex }}
                 />
+                  <div className="flex flex-col flex-1">
+                    <span className="text-sm font-medium">{color.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {color.hex}
+                    </span>
+                  </div>
+                  <Input
+                    readOnly
+                    value={formatCount(color.count)}
+                    className="w-20 text-center"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="hover:bg-transparent hover:text-primary"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      removePaletteColor(color.id);
+                    }}
+                  >
+                    <X className="size-4" />
+                  </Button>
               </div>
             ))}
           </div>
         </div>
+        )}
 
         <div className="space-y-3">
-          {/* Custom color */}
           <Label>Color name</Label>
           <Input
             id="custom-name"
@@ -191,7 +282,6 @@ const ColorManagement = ({
             onChange={(e) => setCustomName(e.target.value)}
           />
 
-          {/* Hex code */}
           <Label>Hex code</Label>
           <div className="flex items-center gap-2">
             <Input
@@ -211,7 +301,6 @@ const ColorManagement = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Add custom color button */}
             <Button
               variant="destructive"
               className="grow"
@@ -219,22 +308,6 @@ const ColorManagement = ({
             >
               Add Custom Color
             </Button>
-
-            {/* display trash icon when custom color exists otherwise hide - delete color */}
-            {hasCustomColors && (
-              <Button
-                type="button"
-                variant={isDeleteCustomMode ? "destructive" : "outline"}
-                onClick={toggleDeleteCustomMode}
-                title={
-                  isDeleteCustomMode
-                    ? "Exit delete mode"
-                    : "Delete custom colors"
-                }
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            )}
           </div>
         </div>
       </CardContent>

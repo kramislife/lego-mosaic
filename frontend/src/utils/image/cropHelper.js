@@ -8,4 +8,13 @@ export function getCenteredSquareCrop(imageWidth, imageHeight) {
   );
 }
 
-export default { getCenteredSquareCrop };
+export function getCenteredAspectCrop(imageWidth, imageHeight, aspect) {
+  const safeAspect = Math.max(0.05, aspect || 1);
+  return centerCrop(
+    makeAspectCrop({ unit: "%", width: 90 }, safeAspect, imageWidth, imageHeight),
+    imageWidth,
+    imageHeight
+  );
+}
+
+export default { getCenteredSquareCrop, getCenteredAspectCrop };

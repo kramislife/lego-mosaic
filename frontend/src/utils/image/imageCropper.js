@@ -6,8 +6,17 @@ export function getCroppedImg(
   const canvas = document.createElement("canvas");
   const scaleX = image.naturalWidth / image.width;
   const scaleY = image.naturalHeight / image.height;
-  const targetWidth = Math.round(crop.width * scaleX);
-  const targetHeight = Math.round(crop.height * scaleY);
+
+  const unit = crop.unit || "px";
+  const isPercent = unit === "%";
+
+  const cropX = isPercent ? (crop.x / 100) * image.width : crop.x;
+  const cropY = isPercent ? (crop.y / 100) * image.height : crop.y;
+  const cropWidth = isPercent ? (crop.width / 100) * image.width : crop.width;
+  const cropHeight = isPercent ? (crop.height / 100) * image.height : crop.height;
+
+  const targetWidth = Math.max(1, Math.round(cropWidth * scaleX));
+  const targetHeight = Math.max(1, Math.round(cropHeight * scaleY));
   canvas.width = targetWidth;
   canvas.height = targetHeight;
   const ctx = canvas.getContext("2d");
@@ -23,10 +32,10 @@ export function getCroppedImg(
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(
         image,
-        Math.round(crop.x * scaleX),
-        Math.round(crop.y * scaleY),
-        Math.round(crop.width * scaleX),
-        Math.round(crop.height * scaleY),
+        Math.round(cropX * scaleX),
+        Math.round(cropY * scaleY),
+        targetWidth,
+        targetHeight,
         0,
         0,
         targetWidth,
