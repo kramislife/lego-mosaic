@@ -7,6 +7,8 @@ import { useColorManagement } from "@/hooks/mosaic/useColorManagement";
 import { downloadMosaicPNG } from "@/utils/exporters/pngExporter";
 import { exportMosaicToPDF } from "@/utils/exporters/pdfExport";
 import { useMosaicEngine } from "@/hooks/useMosaicEngine";
+import { handlePixelClickLogic } from "@/utils/colors/handlePixelClick";
+import { handleResetPalette as handleResetPaletteUtil } from "@/utils/colors/tools/resetPalette";
 
 export const useMosaic = () => {
   // ============================== Image Attachment ===============================
@@ -90,10 +92,13 @@ export const useMosaic = () => {
     totalPixels,
     removePaletteColor,
     resetExcludedColors,
+    resetAllEdits,
     isProcessing: isGeneratingMosaic,
     error: mosaicError,
     gridDimensions,
     pixelGrid,
+    editPixelColor,
+    erasePixelEdit,
   } = useMosaicEngine({
     source: croppedImageUrl,
     width,
@@ -113,10 +118,31 @@ export const useMosaic = () => {
     [customPaletteUsage, imagePalette]
   );
 
-const availableColors = useMemo(
-  () => [...customPaletteUsage, ...imagePalette],
-  [customPaletteUsage, imagePalette]
-);
+  const availableColors = useMemo(() => {
+    // Use the ordering from customPaletteUsage + imagePalette as the base order,
+    // but sort primarily by highest -> lowest usage count so "most used" colors
+    // appear first. When counts are equal, keep the original sequence so the
+    // select matches what you see in the Image Colors / Custom Colors lists.
+    const merged = [...customPaletteUsage, ...imagePalette];
+    const baseOrder = new Map();
+    merged.forEach((color, index) => {
+      if (color?.id != null && !baseOrder.has(color.id)) {
+        baseOrder.set(color.id, index);
+      }
+    });
+
+    return merged.slice().sort((a, b) => {
+      const aCount = a?.count ?? 0;
+      const bCount = b?.count ?? 0;
+      if (aCount !== bCount) {
+        return bCount - aCount; // higher count first
+      }
+
+      const aIndex = baseOrder.get(a.id) ?? 0;
+      const bIndex = baseOrder.get(b.id) ?? 0;
+      return aIndex - bIndex;
+    });
+  }, [customPaletteUsage, imagePalette]);
 const paletteVersion = useMemo(
   () => availableColors.map((color) => `${color.id}:${color.count}`).join("|"),
   [availableColors]
@@ -125,6 +151,22 @@ const previousPaletteVersion = useRef(paletteVersion);
 const builtInColorCount = imagePalette.length;
 const customColorCount = customPaletteUsage.length;
 const totalColorCount = builtInColorCount + customColorCount;
+
+const colorLookup = useMemo(() => {
+  const lookup = new Map();
+  availableColors.forEach((color) => {
+    if (color?.id) {
+      lookup.set(color.id, color);
+    }
+  });
+  return lookup;
+}, [availableColors]);
+
+  const activeColorHex = useMemo(() => {
+    if (!activeColorId) return null;
+    const color = colorLookup.get(activeColorId);
+    return color?.hex ?? null;
+  }, [activeColorId, colorLookup]);
 
   const [selectedIds, setSelectedIds] = useState(
     () => new Set(exportPalette.map((c) => c.id))
@@ -204,6 +246,35 @@ const totalColorCount = builtInColorCount + customColorCount;
   const canExportMosaic =
     width > 0 && height > 0 && Array.isArray(pixelGrid) && pixelGrid.length > 0;
 
+  const handlePixelClick = useCallback(
+    ({ row, col }) => {
+      handlePixelClickLogic({
+        tool,
+        row,
+        col,
+        activeColorId,
+        colorLookup,
+        editPixelColor,
+        erasePixelEdit,
+        gridDimensions,
+        pixelGrid,
+        availableColors,
+        setActiveColorId,
+      });
+    },
+    [
+      tool,
+      activeColorId,
+      colorLookup,
+      editPixelColor,
+      erasePixelEdit,
+      gridDimensions,
+      pixelGrid,
+      availableColors,
+      setActiveColorId,
+    ]
+  );
+
   // Download the mosaic image as a PNG file
   const downloadMosaicImage = useCallback(() => {
     try {
@@ -245,14 +316,27 @@ const totalColorCount = builtInColorCount + customColorCount;
     pixelMode,
   ]);
 
-useEffect(() => {
-  if (paletteVersion === previousPaletteVersion.current) {
-    return;
-  }
-  previousPaletteVersion.current = paletteVersion;
-  const nextColorId = availableColors[0]?.id ?? null;
-  setActiveColorId(nextColorId);
-}, [paletteVersion, availableColors, setActiveColorId]);
+  const handleResetPalette = useCallback(() => {
+    handleResetPaletteUtil({ resetExcludedColors, resetAllEdits });
+  }, [resetExcludedColors, resetAllEdits]);
+
+  useEffect(() => {
+    if (paletteVersion === previousPaletteVersion.current) {
+      return;
+    }
+
+    previousPaletteVersion.current = paletteVersion;
+
+    const hasActiveColor =
+      activeColorId && availableColors.some((color) => color.id === activeColorId);
+
+    if (hasActiveColor) {
+      return;
+    }
+
+    const nextColorId = availableColors[0]?.id ?? null;
+    setActiveColorId(nextColorId);
+  }, [paletteVersion, availableColors, activeColorId, setActiveColorId]);
 
   return {
     // image attachment
@@ -338,7 +422,7 @@ useEffect(() => {
     customPaletteUsage,
     totalPixels,
     removePaletteColor,
-    resetExcludedColors,
+    resetExcludedColors: handleResetPalette,
     isGeneratingMosaic,
     mosaicError,
     gridDimensions,
@@ -348,6 +432,10 @@ useEffect(() => {
     canExportMosaic,
     downloadMosaicImage,
     downloadMosaicInstructions,
+
+    // editing
+    handlePixelClick,
+    activeColorHex,
   };
 };
 

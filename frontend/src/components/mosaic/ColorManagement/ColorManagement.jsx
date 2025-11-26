@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Brush,
   Pipette,
@@ -64,10 +64,43 @@ const ColorManagement = ({
   builtInColorCount,
   customColorCount,
   totalColorCount,
+  isVisible = true,
 }) => {
+  const rootRef = useRef(null);
+
+  // Auto-scroll the selected color into view when activeColorId changes,
+  // regardless of where the change originated (select, list click, dropper, etc.).
+  useEffect(() => {
+    if (!activeColorId || !isVisible) return;
+
+    const root = rootRef.current;
+    if (!root) return;
+
+    const target = root.querySelector(`[data-color-id="${activeColorId}"]`);
+    if (!target) return;
+
+    // Find the nearest scrollable color list container so we only scroll
+    // inside Color Management, not the whole page.
+    const container = target.closest(
+      "[data-color-scroll-container='true']"
+    );
+    if (!container) return;
+
+    const targetRect = target.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    const offsetWithinContainer =
+      targetRect.top - containerRect.top + container.scrollTop;
+    const targetCenterOffset = offsetWithinContainer - container.clientHeight / 2 + targetRect.height / 2;
+
+    container.scrollTo({
+      top: targetCenterOffset,
+      behavior: "smooth",
+    });
+  }, [activeColorId, isVisible]);
 
   return (
-    <Card>
+    <Card ref={rootRef}>
       <CardHeader className="flex items-center justify-between">
         <div className="flex flex-row items-center gap-2">
           <Palette className="size-5 text-primary" />
@@ -174,10 +207,14 @@ const ColorManagement = ({
                 Persistent across images
               </span>
             </div>
-            <div className="space-y-2 max-h-72 overflow-y-auto">
+            <div
+              className="space-y-2 max-h-72 overflow-y-auto"
+              data-color-scroll-container="true"
+            >
               {customPaletteUsage.map((color) => (
                 <div
                   key={color.id}
+                  data-color-id={color.id}
                   className={`flex items-center gap-1 rounded-md border px-3 py-2 cursor-pointer ${
                     activeColorId === color.id
                       ? "border-primary"
@@ -228,10 +265,14 @@ const ColorManagement = ({
                 Total studs: {formatCount(totalPixels)}
               </span>
             </div>
-            <div className="space-y-2 max-h-90 overflow-y-auto">
+            <div
+              className="space-y-2 max-h-90 overflow-y-auto"
+              data-color-scroll-container="true"
+            >
               {imagePalette.map((color) => (
                 <div
                   key={color.id}
+                  data-color-id={color.id}
                   className={`flex items-center gap-1 rounded-md border px-3 py-2 cursor-pointer ${
                     activeColorId === color.id
                       ? "border-primary"

@@ -50,6 +50,7 @@ const Mosaic = () => {
     resetExcludedColors,
     isGeneratingMosaic,
     mosaicError,
+    gridDimensions,
     pixelGrid,
     downloadMosaicImage,
     downloadMosaicInstructions,
@@ -82,6 +83,8 @@ const Mosaic = () => {
     builtInColorCount,
     customColorCount,
     totalColorCount,
+    handlePixelClick,
+    activeColorHex,
   } = useMosaic();
 
   const cropAspect = width > 0 && height > 0 ? width / height : undefined;
@@ -123,27 +126,18 @@ const Mosaic = () => {
     totalColorCount,
   };
 
-  if (isExpanded) {
-    return (
-      <div className="w-full p-5 space-y-3">
-        {/* Preview - Full Width */}
-        <Preview
-          croppedImageUrl={croppedImageUrl}
-          mosaicImageUrl={mosaicUrl}
-          isGenerating={isGeneratingMosaic}
-          imageFilter={imageFilter}
-          isExpanded={true}
-        />
-        {/* Color Management - Below Preview */}
-        <ColorManagement {...colorManagementProps} />
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full grid grid-cols-12 gap-3 p-5">
-      <aside className="col-span-12 lg:col-span-4 space-y-3">
-        {/* Upload Image */}
+    <div
+      className={`w-full p-5 ${
+        isExpanded ? "space-y-3" : "grid grid-cols-12 gap-3"
+      }`}
+    >
+      {/* Sidebar controls */}
+      <aside
+        className={
+          isExpanded ? "hidden" : "col-span-12 lg:col-span-4 space-y-3"
+        }
+      >
         <UploadImage
           imageSrc={imageSrc}
           crop={crop}
@@ -182,7 +176,7 @@ const Mosaic = () => {
         {/* Pixel Mode (Square Tiles, Round Tiles, Square Plates, Round Plates) */}
         <PixelMode pixelMode={pixelMode} setPixelMode={setPixelMode} />
         {/* Color Management (Color Picker, Color List, Custom Color) */}
-        <ColorManagement {...colorManagementProps} />
+        <ColorManagement {...colorManagementProps} isVisible={!isExpanded} />
         {/* Export (PNG, PDF, XML, CSV) */}
         <Export
           width={width}
@@ -200,16 +194,36 @@ const Mosaic = () => {
         />
       </aside>
 
-      <main className="col-span-12 lg:col-span-8">
-        {/* Preview */}
+      <div
+        className={
+          isExpanded
+            ? "col-span-12"
+            : "col-span-12 lg:col-span-8 order-last lg:order-none"
+        }
+      >
         <Preview
+          key="persistent-preview"
           croppedImageUrl={croppedImageUrl}
           mosaicImageUrl={mosaicUrl}
           isGenerating={isGeneratingMosaic}
           imageFilter={imageFilter}
-          isExpanded={false}
+          isExpanded={isExpanded}
+          gridDimensions={gridDimensions}
+          pixelMode={pixelMode}
+          onPixelClick={handlePixelClick}
+          pixelGrid={pixelGrid}
+          tool={tool}
+          activeColorHex={activeColorHex}
+          availableColors={availableColors}
         />
-      </main>
+      </div>
+
+      {/* Color Management below preview in expanded mode */}
+      {isExpanded && (
+        <div className="col-span-12">
+          <ColorManagement {...colorManagementProps} isVisible={isExpanded} />
+        </div>
+      )}
     </div>
   );
 };
