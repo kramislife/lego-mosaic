@@ -64,14 +64,14 @@ const Header = () => {
           </Button>
 
           {/* Log in / Register */}
-          <Dialog>
+          {/* <Dialog>
             <DialogTrigger asChild>
               <Button variant="destructive" aria-label="Log in" title="Log in">
                 Log In
               </Button>
             </DialogTrigger>
             <Auth />
-          </Dialog>
+          </Dialog> */}
         </div>
       </div>
     </header>

@@ -9,6 +9,9 @@ import {
 import { determineCellSize } from "@/utils/grid/cellSize";
 import { mapPixelsToPalette } from "@/utils/colors/mapPixelsToPalette";
 import { renderMappedPixels } from "@/utils/render/renderMappedPixels";
+import { paintPixel } from "@/utils/colors/tools/paint";
+import { erasePixel } from "@/utils/colors/tools/eraser";
+import { resetAllEditsOnGrid } from "@/utils/colors/tools/resetPalette";
 
 const GENERATION_DELAY_MS = 300;
 const BASE_PALETTE = preparePalette(
@@ -32,6 +35,8 @@ export const useMosaicEngine = ({
   const [error, setError] = useState(null);
   const [excludedColorIds, setExcludedColorIds] = useState([]);
   const pixelGridRef = useRef([]);
+  const basePixelGridRef = useRef([]);
+  const editedPixelsRef = useRef(new Map());
   const [pixelVersion, setPixelVersion] = useState(0);
   const [gridDimensions, setGridDimensions] = useState({
     width: 0,
@@ -41,6 +46,20 @@ export const useMosaicEngine = ({
     canvasHeight: 0,
   });
   const usageMapRef = useRef(new Map());
+  const ensureUsageEntry = useCallback((color) => {
+    if (!color || !color.id) return null;
+    if (!usageMapRef.current.has(color.id)) {
+      usageMapRef.current.set(color.id, {
+        id: color.id,
+        name: color.name,
+        hex: color.hex,
+        isCustom: Boolean(color.isCustom),
+        count: 0,
+      });
+    }
+    return usageMapRef.current.get(color.id);
+  }, []);
+
 
   const requestRef = useRef(0);
   const timeoutRef = useRef(null);
@@ -100,9 +119,8 @@ export const useMosaicEngine = ({
       height,
       baseGrid,
       imageFilter,
-      paletteVersion: availablePalette.map((entry) => entry.id).join("-"),
     }),
-    [source, width, height, baseGrid, imageFilter, availablePalette]
+    [source, width, height, baseGrid, imageFilter]
   );
 
   useEffect(() => {
@@ -121,6 +139,8 @@ export const useMosaicEngine = ({
       );
       setTotalPixels(0);
       pixelGridRef.current = [];
+      basePixelGridRef.current = [];
+      editedPixelsRef.current = new Map();
       setPixelVersion((version) => version + 1);
       setGridDimensions({
         width: 0,
@@ -153,6 +173,9 @@ export const useMosaicEngine = ({
     timeoutRef.current = setTimeout(async () => {
       try {
         if (needsResample || !rawDataRef.current) {
+          // New image / size / filter: clear manual edits
+          editedPixelsRef.current = new Map();
+
           const image = await loadImage(src);
           const sampleWidth = Math.max(1, Math.round(w));
           const sampleHeight = Math.max(1, Math.round(h));
@@ -209,23 +232,69 @@ export const useMosaicEngine = ({
         if (requestRef.current !== requestId) return;
 
         const cellSize = determineCellSize(rawData.width, rawData.height);
-        const builtInUsage = mapping.usage
-          .filter((entry) => !entry.isCustom && entry.count > 0)
-          .sort((a, b) => b.count - a.count);
 
-        const customUsageMap = new Map(
-          mapping.usage
-            .filter((entry) => entry.isCustom)
-            .map((entry) => [entry.id, entry])
+        // Start from the freshly mapped pixels (baseline, without manual edits)
+        const basePixels = Array.isArray(mapping.mappedPixels)
+          ? [...mapping.mappedPixels]
+          : [];
+
+        // Drop any manual edits that reference colors no longer in the palette
+        if (editedPixelsRef.current.size) {
+          const allowedIds = new Set(
+            availablePalette.map((entry) => entry.id)
+          );
+          editedPixelsRef.current.forEach((override, index) => {
+            if (!allowedIds.has(override.colorId)) {
+              editedPixelsRef.current.delete(index);
+            }
+          });
+        }
+
+        // Re-apply remaining manual edits on top of the automatic mapping
+        const mappedPixels = basePixels.length ? [...basePixels] : [];
+
+        if (mappedPixels.length && editedPixelsRef.current.size) {
+          editedPixelsRef.current.forEach((override, index) => {
+            if (!mappedPixels[index]) return;
+            mappedPixels[index] = {
+              ...mappedPixels[index],
+              colorId: override.colorId,
+              hex: override.hex,
+              isCustom: Boolean(override.isCustom),
+            };
+          });
+        }
+
+        // Rebuild usage map from the final pixel grid (including remaining overrides)
+        const usageMap = new Map();
+        const paletteLookup = new Map(
+          availablePalette.map((entry) => [entry.id, entry])
         );
 
-        usageMapRef.current = new Map();
-        mapping.usage.forEach((entry) => {
-          usageMapRef.current.set(entry.id, { ...entry });
+        mappedPixels.forEach((pixel) => {
+          if (!pixel || !pixel.colorId) return;
+          const colorId = pixel.colorId;
+          let entry = usageMap.get(colorId);
+          if (!entry) {
+            const paletteColor = paletteLookup.get(colorId);
+            entry = {
+              id: colorId,
+              name: paletteColor?.name ?? pixel.name ?? "",
+              hex: paletteColor?.hex ?? pixel.hex,
+              isCustom: Boolean(
+                paletteColor?.isCustom ?? pixel.isCustom ?? false
+              ),
+              count: 0,
+            };
+            usageMap.set(colorId, entry);
+          }
+          entry.count = (entry.count || 0) + 1;
         });
+
+        // Ensure all custom colors appear in usage map (even if count is 0)
         preparedCustomPalette.forEach((customColor) => {
-          if (!usageMapRef.current.has(customColor.id)) {
-            usageMapRef.current.set(customColor.id, {
+          if (!usageMap.has(customColor.id)) {
+            usageMap.set(customColor.id, {
               id: customColor.id,
               name: customColor.name,
               hex: customColor.hex,
@@ -235,9 +304,12 @@ export const useMosaicEngine = ({
           }
         });
 
+        usageMapRef.current = usageMap;
         syncUsageState();
+
         setTotalPixels(rawData.width * rawData.height);
-        pixelGridRef.current = mapping.mappedPixels;
+        basePixelGridRef.current = basePixels;
+        pixelGridRef.current = mappedPixels;
         setPixelVersion((version) => version + 1);
         setGridDimensions({
           width: rawData.width,
@@ -279,7 +351,7 @@ export const useMosaicEngine = ({
         timeoutRef.current = null;
       }
     };
-  }, [dependencies, availablePalette, preparedCustomPalette]);
+  }, [dependencies, availablePalette]);
 
   useEffect(() => {
     return () => {
@@ -357,6 +429,61 @@ export const useMosaicEngine = ({
     });
   }, [pixelVersion, gridDimensions, pixelMode]);
 
+  const editPixelColor = useCallback(
+    ({ row, col, color }) => {
+      const changed = paintPixel({
+        row,
+        col,
+        color,
+        gridDimensions,
+        pixelGridRef,
+        editedPixelsRef,
+        usageMapRef,
+        ensureUsageEntry,
+      });
+      if (!changed) return false;
+      syncUsageState();
+      setPixelVersion((version) => version + 1);
+      return true;
+    },
+    [ensureUsageEntry, gridDimensions, syncUsageState]
+  );
+
+  const erasePixelEdit = useCallback(
+    ({ row, col }) => {
+      const changed = erasePixel({
+        row,
+        col,
+        gridDimensions,
+        pixelGridRef,
+        basePixelGridRef,
+        editedPixelsRef,
+        usageMapRef,
+        ensureUsageEntry,
+      });
+      if (!changed) return false;
+      syncUsageState();
+      setPixelVersion((version) => version + 1);
+      return true;
+    },
+    [ensureUsageEntry, gridDimensions, syncUsageState]
+  );
+
+  const resetAllEdits = useCallback(() => {
+    const usageMap = resetAllEditsOnGrid({
+      basePixelGridRef,
+      pixelGridRef,
+      editedPixelsRef,
+      availablePalette,
+      preparedCustomPalette,
+    });
+    if (!usageMap) return false;
+    usageMapRef.current = usageMap;
+    syncUsageState();
+    setPixelVersion((version) => version + 1);
+    return true;
+  }, [availablePalette, preparedCustomPalette, syncUsageState]);
+
   return {
     mosaicUrl,
     imagePalette,
@@ -368,6 +495,9 @@ export const useMosaicEngine = ({
     error,
     gridDimensions,
     pixelGrid: pixelGridRef.current,
+    editPixelColor,
+    erasePixelEdit,
+    resetAllEdits,
   };
 };
 
