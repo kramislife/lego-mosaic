@@ -1,1 +1,0 @@
-// This file will be used to implement logic for square pixel

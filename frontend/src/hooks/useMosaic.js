@@ -1,9 +1,12 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useImageUpload } from "@/hooks/mosaic/useImageUpload";
 import { useGridResolution } from "@/hooks/mosaic/useGridResolution";
 import { useAdjustmentFilter } from "@/hooks/mosaic/useAdjustmentFilter";
 import { usePixelMode } from "@/hooks/mosaic/usePixelMode";
 import { useColorManagement } from "@/hooks/mosaic/useColorManagement";
+import { downloadMosaicPNG } from "@/utils/exporters/pngExporter";
+import { exportMosaicToPDF } from "@/utils/exporters/pdfExport";
+import { useMosaicEngine } from "@/hooks/useMosaicEngine";
 
 export const useMosaic = () => {
   // ============================== Image Attachment ===============================
@@ -18,6 +21,7 @@ export const useMosaic = () => {
     handleImageLoad,
     onCropComplete,
     handleRemoveImage,
+    alignCropToAspect,
   } = useImageUpload();
 
   // =============================== Resolutions & Grid System ===============================
@@ -53,15 +57,14 @@ export const useMosaic = () => {
   // =================================== Pixel Display Mode ==================================
   const { pixelMode, setPixelMode } = usePixelMode();
 
+  useEffect(() => {
+    if (width > 0 && height > 0) {
+      alignCropToAspect(width / height);
+    }
+  }, [width, height, alignCropToAspect]);
+
   // ==================================== Color Management ===================================
   const {
-    colors,
-    builtInColors,
-    customColors,
-    totalCount,
-    builtInCount,
-    customCount,
-    hasCustomColors,
     activeColorId,
     setActiveColorId,
     tool,
@@ -70,6 +73,8 @@ export const useMosaic = () => {
     setCustomName,
     customHex,
     setCustomHex,
+    customColors,
+    hasCustomColors,
     addCustomColor,
     deleteCustomColor,
     isDeleteCustomMode,
@@ -77,16 +82,57 @@ export const useMosaic = () => {
     exportColorsToCSV,
   } = useColorManagement();
 
+  // ===================================== Mosaic Engine =====================================
+  const {
+    mosaicUrl,
+    imagePalette,
+    customPaletteUsage,
+    totalPixels,
+    removePaletteColor,
+    resetExcludedColors,
+    isProcessing: isGeneratingMosaic,
+    error: mosaicError,
+    gridDimensions,
+    pixelGrid,
+  } = useMosaicEngine({
+    source: croppedImageUrl,
+    width,
+    height,
+    pixelMode,
+    baseGrid,
+    imageFilter,
+    customColors,
+  });
+
   // ============================= Export Color Dialog State/Actions =============================
   const [exportOpen, setExportOpen] = useState(false);
   const [exportMode, setExportMode] = useState("all"); // all | custom | pick
+
+  const exportPalette = useMemo(
+    () => [...customPaletteUsage, ...imagePalette],
+    [customPaletteUsage, imagePalette]
+  );
+
+const availableColors = useMemo(
+  () => [...customPaletteUsage, ...imagePalette],
+  [customPaletteUsage, imagePalette]
+);
+const paletteVersion = useMemo(
+  () => availableColors.map((color) => `${color.id}:${color.count}`).join("|"),
+  [availableColors]
+);
+const previousPaletteVersion = useRef(paletteVersion);
+const builtInColorCount = imagePalette.length;
+const customColorCount = customPaletteUsage.length;
+const totalColorCount = builtInColorCount + customColorCount;
+
   const [selectedIds, setSelectedIds] = useState(
-    () => new Set(colors.map((c) => c.id))
+    () => new Set(exportPalette.map((c) => c.id))
   );
 
   useEffect(() => {
-    setSelectedIds(new Set(colors.map((c) => c.id)));
-  }, [colors]);
+    setSelectedIds(new Set(exportPalette.map((c) => c.id)));
+  }, [exportPalette]);
 
   const toggleId = useCallback((id) => {
     setSelectedIds((prev) => {
@@ -108,10 +154,10 @@ export const useMosaic = () => {
     });
   }, []);
 
-  const selectAll = useCallback(
-    () => setSelectedIds(new Set(colors.map((c) => c.id))),
-    [colors]
-  );
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(exportPalette.map((c) => c.id)));
+  }, [exportPalette]);
+
   const clearAll = useCallback(() => setSelectedIds(new Set()), []);
 
   const setMode = useCallback(
@@ -120,32 +166,96 @@ export const useMosaic = () => {
       if (mode === "all") {
         selectAll();
       } else if (mode === "custom") {
-        setSelectedIds(new Set(customColors.map((c) => c.id)));
+        selectGroup(customPaletteUsage, true);
       }
     },
-    [customColors, selectAll]
+    [customPaletteUsage, selectAll, selectGroup]
   );
 
   useEffect(() => {
-    if (exportOpen && exportMode === "custom" && customCount === 0) {
+    if (
+      exportOpen &&
+      exportMode === "custom" &&
+      customPaletteUsage.length === 0
+    ) {
       setMode("all");
     }
-  }, [exportOpen, exportMode, customCount, setMode]);
+  }, [exportOpen, exportMode, customPaletteUsage, setMode]);
 
   const handleConfirmExport = useCallback(() => {
-    let toExport = colors;
+    let toExport = exportPalette;
     if (exportMode === "custom") {
-      toExport = customColors;
+      toExport = customPaletteUsage;
     } else if (exportMode === "pick") {
-      toExport = colors.filter((c) => selectedIds.has(c.id));
+      toExport = exportPalette.filter((c) => selectedIds.has(c.id));
     }
     exportColorsToCSV(toExport);
     setExportOpen(false);
-  }, [exportMode, customColors, colors, selectedIds, exportColorsToCSV]);
+  }, [
+    exportMode,
+    exportPalette,
+    customPaletteUsage,
+    selectedIds,
+    exportColorsToCSV,
+  ]);
 
-  // ===================================== Return =====================================
+  // ============================= Export Mosaic =============================
+  // Check if the mosaic can be exported by checking if the width, height, and pixel grid are valid
+  const canExportMosaic =
+    width > 0 && height > 0 && Array.isArray(pixelGrid) && pixelGrid.length > 0;
+
+  // Download the mosaic image as a PNG file
+  const downloadMosaicImage = useCallback(() => {
+    try {
+      downloadMosaicPNG({ mosaicUrl, width, height });
+    } catch (error) {
+      console.error("Error downloading image:", error);
+      alert(error?.message ?? "Failed to download image. Please try again.");
+    }
+  }, [mosaicUrl, width, height]);
+
+  // Download the mosaic instructions as a PDF file
+  const downloadMosaicInstructions = useCallback(() => {
+    try {
+      exportMosaicToPDF({
+        width,
+        height,
+        sectionSize: baseGrid,
+        imagePalette,
+        customPaletteUsage,
+        totalPixels,
+        pixelGrid,
+        pixelMode,
+      });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      alert(
+        error?.message ??
+          "Failed to export PDF. Please ensure the mosaic is fully generated."
+      );
+    }
+  }, [
+    width,
+    height,
+    baseGrid,
+    imagePalette,
+    customPaletteUsage,
+    totalPixels,
+    pixelGrid,
+    pixelMode,
+  ]);
+
+useEffect(() => {
+  if (paletteVersion === previousPaletteVersion.current) {
+    return;
+  }
+  previousPaletteVersion.current = paletteVersion;
+  const nextColorId = availableColors[0]?.id ?? null;
+  setActiveColorId(nextColorId);
+}, [paletteVersion, availableColors, setActiveColorId]);
+
   return {
-    // image
+    // image attachment
     imageSrc,
     setImageSrc,
     crop,
@@ -156,7 +266,8 @@ export const useMosaic = () => {
     handleImageLoad,
     onCropComplete,
     handleRemoveImage,
-    // grid
+
+    // grid & resolution
     baseGrid,
     setBaseGrid,
     width,
@@ -170,6 +281,7 @@ export const useMosaic = () => {
     rows,
     clampToAllowed,
     onSelectBase,
+
     // adjustments
     hue,
     setHue,
@@ -180,11 +292,12 @@ export const useMosaic = () => {
     contrast,
     setContrast,
     imageFilter,
+
     // pixel mode
     pixelMode,
     setPixelMode,
-    // colors
-    colors,
+
+    // color management
     activeColorId,
     setActiveColorId,
     tool,
@@ -193,13 +306,15 @@ export const useMosaic = () => {
     setCustomName,
     customHex,
     setCustomHex,
+    customColors,
+    hasCustomColors,
     addCustomColor,
     deleteCustomColor,
     isDeleteCustomMode,
     toggleDeleteCustomMode,
-    hasCustomColors,
-    // export
     exportColorsToCSV,
+
+    // export selection state/actions
     exportOpen,
     setExportOpen,
     exportMode,
@@ -209,12 +324,30 @@ export const useMosaic = () => {
     selectGroup,
     selectAll,
     clearAll,
-    builtInColors,
-    customColors,
-    totalCount,
-    builtInCount,
-    customCount,
     handleConfirmExport,
+
+    // color palette metadata
+    availableColors,
+    builtInColorCount,
+    customColorCount,
+    totalColorCount,
+
+    // mosaic engine results
+    mosaicUrl,
+    imagePalette,
+    customPaletteUsage,
+    totalPixels,
+    removePaletteColor,
+    resetExcludedColors,
+    isGeneratingMosaic,
+    mosaicError,
+    gridDimensions,
+    pixelGrid,
+
+    // export helpers
+    canExportMosaic,
+    downloadMosaicImage,
+    downloadMosaicInstructions,
   };
 };
 

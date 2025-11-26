@@ -2,6 +2,7 @@ import React from "react";
 import { Square, Circle, PictureInPicture } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { PIXEL_MODES } from "@/constant/pixelConfig";
 
 const PixelMode = ({ pixelMode, setPixelMode }) => {
   return (
@@ -14,24 +15,24 @@ const PixelMode = ({ pixelMode, setPixelMode }) => {
         <div className="grid grid-cols-2 gap-2">
           <Button
             type="button"
-            variant={pixelMode === "square" ? "destructive" : "outline"}
-            onClick={() => setPixelMode("square")}
-          >
-            <Square className="size-5" />
-            Squares
-          </Button>
-          <Button
-            type="button"
-            variant={pixelMode === "circle" ? "destructive" : "outline"}
-            onClick={() => setPixelMode("circle")}
+            variant={pixelMode === PIXEL_MODES.ROUND_TILE ? "destructive" : "outline"}
+            onClick={() => setPixelMode(PIXEL_MODES.ROUND_TILE)}
           >
             <Circle className="size-5" />
-            Circles
+            Round Tiles
           </Button>
           <Button
             type="button"
-            variant={pixelMode === "square_plate" ? "destructive" : "outline"}
-            onClick={() => setPixelMode("square_plate")}
+            variant={pixelMode === PIXEL_MODES.SQUARE_TILE ? "destructive" : "outline"}
+            onClick={() => setPixelMode(PIXEL_MODES.SQUARE_TILE)}
+          >
+            <Square className="size-5" />
+            Square Tiles
+          </Button>
+          <Button
+            type="button"
+            variant={pixelMode === PIXEL_MODES.SQUARE_PLATE ? "destructive" : "outline"}
+            onClick={() => setPixelMode(PIXEL_MODES.SQUARE_PLATE)}
           >
             <svg
               width="20"
@@ -57,12 +58,12 @@ const PixelMode = ({ pixelMode, setPixelMode }) => {
                 strokeWidth="1.5"
               />
             </svg>
-            Concentric Squares
+            Square Plates
           </Button>
           <Button
             type="button"
-            variant={pixelMode === "circle_plate" ? "destructive" : "outline"}
-            onClick={() => setPixelMode("circle_plate")}
+            variant={pixelMode === PIXEL_MODES.ROUND_PLATE ? "destructive" : "outline"}
+            onClick={() => setPixelMode(PIXEL_MODES.ROUND_PLATE)}
           >
             <svg
               width="20"
@@ -86,7 +87,7 @@ const PixelMode = ({ pixelMode, setPixelMode }) => {
                 strokeWidth="1.5"
               />
             </svg>
-            Concentric Circles
+            Round Plates
           </Button>
         </div>
       </CardContent>

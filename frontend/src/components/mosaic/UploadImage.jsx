@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, Upload, X } from "lucide-react";
+import { Image, Upload } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ const UploadImage = ({
   onCropComplete,
   handleRemoveImage,
   imageFilter,
+  cropAspect,
 }) => {
   return (
     <Card className="gap-3">
@@ -43,7 +44,7 @@ const UploadImage = ({
               crop={crop}
               onChange={setCrop}
               onComplete={onCropComplete}
-              aspect={1}
+              aspect={cropAspect || undefined}
               ruleOfThirds
             >
               <img
