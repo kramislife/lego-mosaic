@@ -55,7 +55,6 @@ export const exportMosaicToPDF = ({
     totalPixels,
     allColors,
     colorNumberMap,
-    pixelMode,
   });
 
   // Page 2: Layout Guide
@@ -96,7 +95,6 @@ function generateOverviewPage(doc, params) {
     totalPixels,
     allColors,
     colorNumberMap,
-    pixelMode,
   } = params;
 
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -142,16 +140,12 @@ function generateOverviewPage(doc, params) {
 
   // Column 3
   doc.setFont("helvetica", "bold");
-  doc.text("Pixel Style:", col3X, infoY);
-  doc.setFont("helvetica", "normal");
-  doc.text(getPixelModeLabel(pixelMode), col3X + 28, infoY);
-  doc.setFont("helvetica", "bold");
-  doc.text("Total Sections:", col3X, infoY + 7);
+  doc.text("Total Sections:", col3X, infoY);
   doc.setFont("helvetica", "normal");
   doc.text(
     `${totalSections.toLocaleString()} (${sectionsWide} x ${sectionsHigh})`,
     col3X + 28,
-    infoY + 7
+    infoY
   );
 
   yPos = infoY + 22;
@@ -215,7 +209,7 @@ function generateOverviewPage(doc, params) {
       
       // Color number inside box - properly centered
       doc.setFontSize(10);
-      doc.setFont("helvetica", "semibold");
+      doc.setFont("helvetica", "bold");
       // Check if color is dark to use white text, otherwise use black
     const rgb = hexToRgb(color.hex);
       const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
@@ -372,6 +366,7 @@ function buildPixelMatrix(pixels, width, height, colorNumberMap) {
     Array.from({ length: width }, () => ({
       number: null,
       hex: "#ffffff",
+      pixelModeOverride: null,
     }))
   );
 
@@ -388,6 +383,7 @@ function buildPixelMatrix(pixels, width, height, colorNumberMap) {
       matrix[pixel.y][pixel.x] = {
         number: colorNumberMap.get(pixel.colorId) || null,
         hex: pixel.hex || "#ffffff",
+        pixelModeOverride: pixel.pixelModeOverride || null,
       };
     }
   });
@@ -526,9 +522,10 @@ function drawSectionPage(doc, params) {
       const cellX = gridX + colIndex * cellSize;
       const cellY = gridY + rowIndex * cellSize;
       const hex = cell?.hex || "#ffffff";
+      const modeForCell = cell?.pixelModeOverride || pixelMode;
 
       drawPixelShape(doc, {
-        mode: pixelMode,
+        mode: modeForCell,
         x: cellX,
         y: cellY,
         size: cellSize,
@@ -583,7 +580,7 @@ function renderSectionColorLegend(doc, { x, y, maxWidth, colors }) {
       const { r, g, b } = getContrastingTextColor(color.hex);
       doc.setTextColor(r, g, b);
       doc.setFontSize(8);
-      doc.setFont("helvetica", "semibold");
+      doc.setFont("helvetica", "bold");
       doc.text(
         color.number.toString(),
         columnX + boxSize / 2,
@@ -619,8 +616,10 @@ function drawPixelShape(doc, { mode, x, y, size, hex }) {
   const normalizedMode = normalisePixelMode(mode);
   const centerX = x + size / 2;
   const centerY = y + size / 2;
-  const circleRadius = size / 2;
-  const innerRadius = size * 0.32;
+  // Slightly inset radii so circles and inner rings never bleed over
+  // the cell bounds, even when mixing different pixel shapes.
+  const circleRadius = size * 0.45;
+  const innerRadius = size * 0.30;
 
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.2);
@@ -662,21 +661,6 @@ function normalisePixelMode(mode) {
       return PIXEL_MODES.SQUARE_PLATE;
     default:
       return mode;
-  }
-}
-
-function getPixelModeLabel(mode) {
-  const normalized = normalisePixelMode(mode);
-  switch (normalized) {
-    case PIXEL_MODES.ROUND_TILE:
-      return "Round Tiles";
-    case PIXEL_MODES.SQUARE_PLATE:
-      return "Square Plates";
-    case PIXEL_MODES.ROUND_PLATE:
-      return "Round Plates";
-    case PIXEL_MODES.SQUARE_TILE:
-    default:
-      return "Square Tiles";
   }
 }
 

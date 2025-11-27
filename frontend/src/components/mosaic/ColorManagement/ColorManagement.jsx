@@ -1,13 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import {
-  Brush,
-  Pipette,
-  Eraser,
-  Download,
-  RotateCcw,
-  Palette,
-  X,
-} from "lucide-react";
+import { Download, RotateCcw, Palette, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -22,12 +14,7 @@ import {
 } from "@/components/ui/select";
 import ColorExport from "@/components/mosaic/ColorManagement/components/ColorExport";
 import { isValidHex } from "@/utils/colors/colorValidator";
-
-const TOOL_OPTIONS = [
-  { value: "paint", label: "Paint", icon: Brush },
-  { value: "pick", label: "Dropper", icon: Pipette },
-  { value: "erase", label: "Eraser", icon: Eraser },
-];
+import { PIXEL_MODE_OPTIONS, TOOL_OPTIONS } from "@/constant/pixelConfig";
 
 function formatCount(count) {
   return new Intl.NumberFormat().format(count ?? 0);
@@ -41,6 +28,8 @@ const ColorManagement = ({
   totalPixels,
   activeColorId,
   setActiveColorId,
+  brushPixelMode,
+  setBrushPixelMode,
   customName,
   setCustomName,
   customHex,
@@ -81,9 +70,7 @@ const ColorManagement = ({
 
     // Find the nearest scrollable color list container so we only scroll
     // inside Color Management, not the whole page.
-    const container = target.closest(
-      "[data-color-scroll-container='true']"
-    );
+    const container = target.closest("[data-color-scroll-container='true']");
     if (!container) return;
 
     const targetRect = target.getBoundingClientRect();
@@ -91,7 +78,10 @@ const ColorManagement = ({
 
     const offsetWithinContainer =
       targetRect.top - containerRect.top + container.scrollTop;
-    const targetCenterOffset = offsetWithinContainer - container.clientHeight / 2 + targetRect.height / 2;
+    const targetCenterOffset =
+      offsetWithinContainer -
+      container.clientHeight / 2 +
+      targetRect.height / 2;
 
     container.scrollTo({
       top: targetCenterOffset,
@@ -104,21 +94,24 @@ const ColorManagement = ({
       <CardHeader className="flex items-center justify-between">
         <div className="flex flex-row items-center gap-2">
           <Palette className="size-5 text-primary" />
-          <CardTitle className="font-sans">Color Management</CardTitle>
+          <CardTitle className="font-sans">
+            Color and Pixel Management
+          </CardTitle>
         </div>
 
         <Button
           variant="outline"
           size="sm"
-          aria-label="Reset removed colors"
-          title="Reset removed colors"
+          aria-label="Reset all changes to default"
+          title="Reset colors and pixel mode to default"
           onClick={resetExcludedColors}
           disabled={imagePalette.length === 0}
         >
-          <RotateCcw className="size-4" /> Reset palette
+          <RotateCcw className="size-4" /> Reset Canvas
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Top row: tool, brush pixel mode, and export in one line */}
         <div className="flex items-center gap-2">
           <Select value={tool} onValueChange={setTool}>
             <SelectTrigger className="grow justify-between">
@@ -135,30 +128,18 @@ const ColorManagement = ({
             </SelectContent>
           </Select>
 
-          {availableColors.length > 0 && (
-            <Select
-              value={activeColorId || availableColors[0]?.id || ""}
-              onValueChange={setActiveColorId}
-            >
-              <SelectTrigger className="grow justify-between">
-                <SelectValue placeholder="Select color" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableColors.map((color) => (
-                  <SelectItem key={color.id} value={color.id}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="size-4 rounded-sm border"
-                        style={{ backgroundColor: color.hex }}
-                      />
-                      <span>{color.name}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
+          <Select value={brushPixelMode} onValueChange={setBrushPixelMode}>
+            <SelectTrigger className="grow justify-between">
+              <SelectValue placeholder="Pixel mode (default: no change)" />
+            </SelectTrigger>
+            <SelectContent>
+              {PIXEL_MODE_OPTIONS.map((mode) => (
+                <SelectItem key={mode.value} value={mode.value}>
+                  {mode.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Dialog open={exportOpen} onOpenChange={setExportOpen}>
             <DialogTrigger asChild>
               <Button
@@ -198,7 +179,7 @@ const ColorManagement = ({
         ) : null}
 
         {customPaletteUsage.length > 0 && (
-        <div className="space-y-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="font-bold">
                 Custom Colors ({customColorCount})
@@ -237,18 +218,18 @@ const ColorManagement = ({
                     value={formatCount(color.count)}
                     className="w-16 text-center"
                   />
-                    <Button
-                      type="button"
+                  <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className="hover:bg-transparent hover:text-primary"
                     onClick={(event) => {
                       event.stopPropagation();
-                        deleteCustomColor(color.id);
-                      }}
-                    >
+                      deleteCustomColor(color.id);
+                    }}
+                  >
                     <X className="size-4" />
-                    </Button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -282,8 +263,8 @@ const ColorManagement = ({
                 >
                   <span
                     className="size-8 rounded-md border"
-                  style={{ backgroundColor: color.hex }}
-                />
+                    style={{ backgroundColor: color.hex }}
+                  />
                   <div className="flex flex-col flex-1">
                     <span className="text-sm font-medium">{color.name}</span>
                     <span className="text-xs text-muted-foreground">
@@ -307,10 +288,10 @@ const ColorManagement = ({
                   >
                     <X className="size-4" />
                   </Button>
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
         )}
 
         <div className="space-y-3">

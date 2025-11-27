@@ -10,7 +10,7 @@ import { determineCellSize } from "@/utils/grid/cellSize";
 import { mapPixelsToPalette } from "@/utils/colors/mapPixelsToPalette";
 import { renderMappedPixels } from "@/utils/render/renderMappedPixels";
 import { paintPixel } from "@/utils/colors/tools/paint";
-import { erasePixel } from "@/utils/colors/tools/eraser";
+import { erasePixel, erasePixelsByColorId } from "@/utils/colors/tools/eraser";
 import { resetAllEditsOnGrid } from "@/utils/colors/tools/resetPalette";
 
 const GENERATION_DELAY_MS = 300;
@@ -65,18 +65,28 @@ export const useMosaicEngine = ({
   const timeoutRef = useRef(null);
   const sampleKeyRef = useRef(null);
   const rawDataRef = useRef(null);
+  const preparedCustomPaletteRef = useRef([]);
 
   const preparedCustomPalette = useMemo(
     () => preparePalette(customColors.map((c) => ({ ...c, isCustom: true }))),
     [customColors]
   );
 
+  // Keep ref in sync with current preparedCustomPalette to avoid stale closures
+  useEffect(() => {
+    preparedCustomPaletteRef.current = preparedCustomPalette;
+  }, [preparedCustomPalette]);
+
   const availablePalette = useMemo(() => {
     const excluded = new Set(excludedColorIds);
-    const includeCustom = excluded.size > 0;
-    const paletteEntries = includeCustom
-      ? [...preparedCustomPalette, ...BASE_PALETTE]
-      : BASE_PALETTE;
+
+    // Fast path: no exclusions, just use base palette as-is so the reference
+    // stays stable when only custom colors change.
+    if (excluded.size === 0) {
+      return BASE_PALETTE;
+    }
+
+    const paletteEntries = [...preparedCustomPalette, ...BASE_PALETTE];
     return paletteEntries.filter((entry) => !excluded.has(entry.id));
   }, [preparedCustomPalette, excludedColorIds]);
 
@@ -92,7 +102,9 @@ export const useMosaicEngine = ({
       }
     });
 
-    const orderedCustom = preparedCustomPalette.map((customColor) => {
+    // Read from ref to avoid stale closure when called immediately after state updates
+    const currentPreparedPalette = preparedCustomPaletteRef.current;
+    const orderedCustom = currentPreparedPalette.map((customColor) => {
       if (customEntries.has(customColor.id)) {
         return customEntries.get(customColor.id);
       }
@@ -110,7 +122,7 @@ export const useMosaicEngine = ({
 
     setImagePalette(builtIn);
     setCustomPaletteUsage(orderedCustom);
-  }, [preparedCustomPalette]);
+  }, []);
 
   const dependencies = useMemo(
     () => ({
@@ -261,6 +273,10 @@ export const useMosaicEngine = ({
               colorId: override.colorId,
               hex: override.hex,
               isCustom: Boolean(override.isCustom),
+              pixelModeOverride:
+                override.pixelModeOverride ??
+                mappedPixels[index].pixelModeOverride ??
+                null,
             };
           });
         }
@@ -430,11 +446,12 @@ export const useMosaicEngine = ({
   }, [pixelVersion, gridDimensions, pixelMode]);
 
   const editPixelColor = useCallback(
-    ({ row, col, color }) => {
+    ({ row, col, color, pixelModeOverride }) => {
       const changed = paintPixel({
         row,
         col,
         color,
+        pixelModeOverride,
         gridDimensions,
         pixelGridRef,
         editedPixelsRef,
@@ -484,6 +501,25 @@ export const useMosaicEngine = ({
     return true;
   }, [availablePalette, preparedCustomPalette, syncUsageState]);
 
+  const revertEditsForColor = useCallback(
+    (colorId) => {
+      const changed = erasePixelsByColorId({
+        colorId,
+        gridDimensions,
+        pixelGridRef,
+        basePixelGridRef,
+        editedPixelsRef,
+        usageMapRef,
+        ensureUsageEntry,
+      });
+      if (!changed) return false;
+      syncUsageState();
+      setPixelVersion((version) => version + 1);
+      return true;
+    },
+    [ensureUsageEntry, gridDimensions, syncUsageState]
+  );
+
   return {
     mosaicUrl,
     imagePalette,
@@ -498,6 +534,7 @@ export const useMosaicEngine = ({
     editPixelColor,
     erasePixelEdit,
     resetAllEdits,
+    revertEditsForColor,
   };
 };
 

@@ -2,6 +2,7 @@ export const paintPixel = ({
   row,
   col,
   color,
+  pixelModeOverride,
   gridDimensions,
   pixelGridRef,
   editedPixelsRef,
@@ -38,6 +39,7 @@ export const paintPixel = ({
     colorId: color.id,
     hex: color.hex,
     isCustom: Boolean(color.isCustom),
+    pixelModeOverride: pixelModeOverride ?? null,
   };
 
   // Record this pixel as manually edited so we can re-apply it
@@ -46,6 +48,7 @@ export const paintPixel = ({
     colorId: color.id,
     hex: color.hex,
     isCustom: Boolean(color.isCustom),
+    pixelModeOverride: pixelModeOverride ?? null,
   });
 
   if (previousColorId && usageMapRef.current.has(previousColorId)) {

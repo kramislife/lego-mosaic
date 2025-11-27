@@ -42,6 +42,8 @@ const Mosaic = () => {
     imageFilter,
     pixelMode,
     setPixelMode,
+    brushPixelMode,
+    setBrushPixelMode,
     mosaicUrl,
     imagePalette,
     customPaletteUsage,
@@ -92,6 +94,8 @@ const Mosaic = () => {
   const colorManagementProps = {
     tool,
     setTool,
+    brushPixelMode,
+    setBrushPixelMode,
     imagePalette,
     customPaletteUsage,
     totalPixels,
