@@ -23,7 +23,7 @@ export const renderMappedPixels = (mappedPixels, width, height, cellSize, mode) 
   ctx.fillStyle = FALLBACK_BACKGROUND;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const normalisedMode = normalisePixelMode(mode);
+  const defaultMode = normalisePixelMode(mode);
 
   const radius = Math.max(1, cellSize / 2);
   const innerRadius = radius * 0.55;
@@ -42,7 +42,11 @@ export const renderMappedPixels = (mappedPixels, width, height, cellSize, mode) 
     const cx = px + halfCellSize;
     const cy = py + halfCellSize;
 
-    switch (normalisedMode) {
+    const pixelMode = normalisePixelMode(
+      pixel.pixelModeOverride || defaultMode
+    );
+
+    switch (pixelMode) {
       case PIXEL_MODES.ROUND_TILE: {
         drawRoundTile({ ctx, cx, cy, radius, hex: pixel.hex });
         break;

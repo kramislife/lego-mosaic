@@ -26,8 +26,8 @@ const Adjustment = ({
         <Button
           variant="outline"
           size="sm"
-          aria-label="Reset all adjustments"
-          title="Reset all adjustments"
+          aria-label="Reset adjustments to default"
+          title="Reset all adjustment sliders (hue, saturation, brightness, contrast)"
           onClick={() => {
             setHue(0);
             setSaturation(0);
@@ -36,7 +36,7 @@ const Adjustment = ({
           }}
         >
           <RotateCcw className="size-4" />
-          Reset all
+          Reset Filters
         </Button>
       </CardHeader>
       <CardContent className="space-y-5">

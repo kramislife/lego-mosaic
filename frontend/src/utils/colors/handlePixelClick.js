@@ -12,6 +12,7 @@ export const handlePixelClickLogic = ({
   pixelGrid,
   availableColors,
   setActiveColorId,
+  brushPixelMode,
 }) => {
   if (!gridDimensions?.width || !gridDimensions?.height) return;
 
@@ -19,7 +20,9 @@ export const handlePixelClickLogic = ({
     if (!activeColorId) return;
     const color = colorLookup.get(activeColorId);
     if (!color) return;
-    editPixelColor({ row, col, color });
+    const pixelModeOverride =
+      brushPixelMode && brushPixelMode !== "none" ? brushPixelMode : null;
+    editPixelColor({ row, col, color, pixelModeOverride });
     return;
   }
 

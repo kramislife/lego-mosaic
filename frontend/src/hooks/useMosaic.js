@@ -58,6 +58,7 @@ export const useMosaic = () => {
 
   // =================================== Pixel Display Mode ==================================
   const { pixelMode, setPixelMode } = usePixelMode();
+  const [brushPixelMode, setBrushPixelMode] = useState("none");
 
   useEffect(() => {
     if (width > 0 && height > 0) {
@@ -99,6 +100,7 @@ export const useMosaic = () => {
     pixelGrid,
     editPixelColor,
     erasePixelEdit,
+    revertEditsForColor,
   } = useMosaicEngine({
     source: croppedImageUrl,
     width,
@@ -260,6 +262,7 @@ const colorLookup = useMemo(() => {
         pixelGrid,
         availableColors,
         setActiveColorId,
+        brushPixelMode,
       });
     },
     [
@@ -272,8 +275,34 @@ const colorLookup = useMemo(() => {
       pixelGrid,
       availableColors,
       setActiveColorId,
+      brushPixelMode,
     ]
   );
+
+  // Track deleted color IDs to revert edits after state update
+  const deletedColorIdsRef = useRef(new Set());
+
+  const handleDeleteCustomColor = useCallback(
+    (paletteId) => {
+      deleteCustomColor(paletteId);
+      // Mark this color for deletion - we'll revert edits after state updates
+      deletedColorIdsRef.current.add(paletteId);
+    },
+    [deleteCustomColor]
+  );
+
+  // Revert edits for deleted colors after customColors state has updated
+  useEffect(() => {
+    if (deletedColorIdsRef.current.size === 0) return;
+
+    const idsToRevert = Array.from(deletedColorIdsRef.current);
+    deletedColorIdsRef.current.clear();
+
+    // Revert edits for each deleted color
+    idsToRevert.forEach((colorId) => {
+      revertEditsForColor(colorId);
+    });
+  }, [customColors, revertEditsForColor]);
 
   // Download the mosaic image as a PNG file
   const downloadMosaicImage = useCallback(() => {
@@ -380,6 +409,8 @@ const colorLookup = useMemo(() => {
     // pixel mode
     pixelMode,
     setPixelMode,
+    brushPixelMode,
+    setBrushPixelMode,
 
     // color management
     activeColorId,
@@ -393,7 +424,7 @@ const colorLookup = useMemo(() => {
     customColors,
     hasCustomColors,
     addCustomColor,
-    deleteCustomColor,
+    deleteCustomColor: handleDeleteCustomColor,
     isDeleteCustomMode,
     toggleDeleteCustomMode,
     exportColorsToCSV,
