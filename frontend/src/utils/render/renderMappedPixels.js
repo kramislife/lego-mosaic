@@ -32,8 +32,9 @@ export const renderMappedPixels = (mappedPixels, width, height, cellSize, mode) 
   const halfCellSize = cellSize / 2;
   const plateBorderWidth = Math.max(1, cellSize * 0.05);
   const hasSquareOutline = cellSize >= 2;
-
-  for (let i = 0; i < mappedPixels.length; i += 1) {
+  const pixelCount = mappedPixels.length;
+  
+  for (let i = 0; i < pixelCount; i += 1) {
     const pixel = mappedPixels[i];
     if (!pixel) continue;
 

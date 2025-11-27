@@ -1,7 +1,8 @@
 import React from "react";
-import { Sun, Moon, LayoutGrid, HelpCircle, Expand, Minimize2 } from "lucide-react";
+import { Sun, Moon, HelpCircle, Expand, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import Logo from "@/assets/media/Logo-2.png";
 import { useThemeToggle } from "@/hooks/useToggleTheme";
 import { useExpand } from "@/contexts/ExpandContext";
 import Guide from "@/pages/Guide";
@@ -10,18 +11,13 @@ import Auth from "@/pages/Auth";
 const Header = () => {
   const { darkMode, toggleDarkMode } = useThemeToggle();
   const { isExpanded, toggleExpand } = useExpand();
-  
+
   return (
     <header className="bg-background sticky top-0 z-50 w-full border-b shadow-xs">
       <div className="p-5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex size-9 items-center justify-center rounded-md bg-muted-foreground/10">
-            <LayoutGrid />
-          </span>
-          <h1 className="font-sans text-2xl font-semibold">
-            LEGO Mosaic Studio
-          </h1>
-        </div>
+        <a href="/">
+          <img src={Logo} alt="Logo" className="w-48" />
+        </a>
 
         <div className="flex items-center gap-1">
           {/* Full screen */}

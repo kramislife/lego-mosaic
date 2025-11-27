@@ -64,10 +64,13 @@ const Guide = () => {
             <Label className="text-xl font-sans font-bold">Features</Label>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+          <div className="flex flex-wrap justify-center gap-5">
             {PRO_FEATURES.map(
               ({ icon: Icon, title, desc, colorClass }, idx) => (
-                <div key={idx} className="text-center p-4">
+                <div
+                  key={idx}
+                  className="text-center p-4 w-full sm:w-[150px] md:w-[200px] max-w-[280px]"
+                >
                   <div
                     className={`size-12 ${colorClass} rounded-xl mx-auto mb-3 flex items-center justify-center`}
                   >

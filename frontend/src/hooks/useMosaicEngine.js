@@ -13,7 +13,12 @@ import { paintPixel } from "@/utils/colors/tools/paint";
 import { erasePixel, erasePixelsByColorId } from "@/utils/colors/tools/eraser";
 import { resetAllEditsOnGrid } from "@/utils/colors/tools/resetPalette";
 
-const GENERATION_DELAY_MS = 300;
+const getGenerationDelay = (width, height) => {
+  const totalPixels = width * height;
+  if (totalPixels <= 4096) return 150; // 64x64 or smaller: 150ms
+  if (totalPixels <= 16384) return 200; // 128x128: 200ms
+  return 300; // Larger: 300ms
+};
 const BASE_PALETTE = preparePalette(
   BRICKLINK_COLORS.map((color) => ({ ...color, isCustom: false }))
 );
@@ -46,6 +51,7 @@ export const useMosaicEngine = ({
     canvasHeight: 0,
   });
   const usageMapRef = useRef(new Map());
+  const renderTimeoutRef = useRef(null);
   const ensureUsageEntry = useCallback((color) => {
     if (!color || !color.id) return null;
     if (!usageMapRef.current.has(color.id)) {
@@ -182,6 +188,7 @@ export const useMosaicEngine = ({
     });
     const needsResample = sampleKeyRef.current !== sampleKey;
 
+    const delay = getGenerationDelay(w, h);
     timeoutRef.current = setTimeout(async () => {
       try {
         if (needsResample || !rawDataRef.current) {
@@ -359,7 +366,7 @@ export const useMosaicEngine = ({
           setIsProcessing(false);
         }
       }
-    }, GENERATION_DELAY_MS);
+    }, delay);
 
     return () => {
       if (timeoutRef.current) {
@@ -373,6 +380,12 @@ export const useMosaicEngine = ({
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+      }
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+      }
+      if (editBatchTimeoutRef.current) {
+        clearTimeout(editBatchTimeoutRef.current);
       }
       setMosaicUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
@@ -416,6 +429,7 @@ export const useMosaicEngine = ({
     syncUsageState();
   }, [preparedCustomPalette, syncUsageState]);
 
+  // Optimized rendering with debouncing for rapid updates
   useEffect(() => {
     const pixels = pixelGridRef.current;
     if (
@@ -424,6 +438,10 @@ export const useMosaicEngine = ({
       !gridDimensions.height ||
       !gridDimensions.cellSize
     ) {
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+        renderTimeoutRef.current = null;
+      }
       setMosaicUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return null;
@@ -431,19 +449,46 @@ export const useMosaicEngine = ({
       return;
     }
 
-    const rendered = renderMappedPixels(
-      pixels,
-      gridDimensions.width,
-      gridDimensions.height,
-      gridDimensions.cellSize,
-      pixelMode
-    );
+    // Clear any pending render
+    if (renderTimeoutRef.current) {
+      clearTimeout(renderTimeoutRef.current);
+    }
 
-    setMosaicUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return rendered.mosaicUrl;
-    });
+    // For large mosaics (>64x64), debounce rapid updates
+    const totalPixels = gridDimensions.width * gridDimensions.height;
+    const isLargeMosaic = totalPixels > 4096; // 64x64
+    const debounceDelay = isLargeMosaic ? 50 : 0; // 50ms debounce for large mosaics
+
+    const performRender = () => {
+      const rendered = renderMappedPixels(
+        pixels,
+        gridDimensions.width,
+        gridDimensions.height,
+        gridDimensions.cellSize,
+        pixelMode
+      );
+
+      setMosaicUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return rendered.mosaicUrl;
+      });
+    };
+
+    if (debounceDelay > 0) {
+      renderTimeoutRef.current = setTimeout(performRender, debounceDelay);
+    } else {
+      performRender();
+    }
+
+    return () => {
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+        renderTimeoutRef.current = null;
+      }
+    };
   }, [pixelVersion, gridDimensions, pixelMode]);
+
+  const editBatchTimeoutRef = useRef(null);
 
   const editPixelColor = useCallback(
     ({ row, col, color, pixelModeOverride }) => {
@@ -459,7 +504,25 @@ export const useMosaicEngine = ({
         ensureUsageEntry,
       });
       if (!changed) return false;
-      syncUsageState();
+
+      // For large mosaics, batch syncUsageState calls
+      const totalPixels = gridDimensions.width * gridDimensions.height;
+      const isLargeMosaic = totalPixels > 4096;
+
+      if (isLargeMosaic) {
+        // Batch syncUsageState updates
+        if (editBatchTimeoutRef.current) {
+          clearTimeout(editBatchTimeoutRef.current);
+        }
+        editBatchTimeoutRef.current = setTimeout(() => {
+          syncUsageState();
+          editBatchTimeoutRef.current = null;
+        }, 100); // Batch usage updates every 100ms
+      } else {
+        syncUsageState();
+      }
+
+      // Always trigger render update immediately (debounced in useEffect)
       setPixelVersion((version) => version + 1);
       return true;
     },
@@ -479,7 +542,23 @@ export const useMosaicEngine = ({
         ensureUsageEntry,
       });
       if (!changed) return false;
-      syncUsageState();
+
+      // Batch syncUsageState for large mosaics
+      const totalPixels = gridDimensions.width * gridDimensions.height;
+      const isLargeMosaic = totalPixels > 4096;
+
+      if (isLargeMosaic) {
+        if (editBatchTimeoutRef.current) {
+          clearTimeout(editBatchTimeoutRef.current);
+        }
+        editBatchTimeoutRef.current = setTimeout(() => {
+          syncUsageState();
+          editBatchTimeoutRef.current = null;
+        }, 100);
+      } else {
+        syncUsageState();
+      }
+
       setPixelVersion((version) => version + 1);
       return true;
     },
