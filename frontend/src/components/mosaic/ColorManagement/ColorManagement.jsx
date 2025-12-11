@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Download, RotateCcw, Palette, X } from "lucide-react";
+import { Download, RotateCcw, Palette, X, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ const ColorManagement = ({
   setCustomHex,
   addCustomColor,
   deleteCustomColor,
+  importColorsFromFile,
   exportOpen,
   setExportOpen,
   exportMode,
@@ -325,10 +326,35 @@ const ColorManagement = ({
           <div className="flex items-center gap-2">
             <Button
               variant="destructive"
-              className="grow"
+              className="flex-1 py-3 text-base"
               onClick={addCustomColor}
             >
               Add Custom Color
+            </Button>
+
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls,.xlsm"
+              className="hidden"
+              id="color-file-upload"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && importColorsFromFile) {
+                  importColorsFromFile(file, imagePalette || []);
+                }
+                e.target.value = ""; // reset
+              }}
+            />
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                document.getElementById("color-file-upload")?.click();
+              }}
+              title="Upload CSV/Excel Color File"
+            >
+              <Upload />
             </Button>
           </div>
         </div>

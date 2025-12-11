@@ -83,6 +83,7 @@ export const useMosaic = () => {
     isDeleteCustomMode,
     toggleDeleteCustomMode,
     exportColorsToCSV,
+    importColorsFromFile,
   } = useColorManagement();
 
   // ===================================== Mosaic Engine =====================================
@@ -428,6 +429,7 @@ const colorLookup = useMemo(() => {
     isDeleteCustomMode,
     toggleDeleteCustomMode,
     exportColorsToCSV,
+    importColorsFromFile,
 
     // export selection state/actions
     exportOpen,
