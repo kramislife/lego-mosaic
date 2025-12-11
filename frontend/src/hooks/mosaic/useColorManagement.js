@@ -21,6 +21,19 @@ export const useColorManagement = () => {
 
   const [importedColors, setImportedColors] = useState([]);
 
+  // Robust ID generator to avoid collisions during batch imports
+  const generateId = useCallback((prefix, extra = "") => {
+    if (
+      typeof crypto !== "undefined" &&
+      typeof crypto.randomUUID === "function"
+    ) {
+      return `${prefix}-${crypto.randomUUID()}`;
+    }
+    const now = Date.now();
+    const rand = Math.random().toString(36).slice(2, 10);
+    return extra ? `${prefix}-${now}-${extra}-${rand}` : `${prefix}-${now}-${rand}`;
+  }, []);
+
   const persistCustomColors = useCallback((next) => {
     setCustomColors(next);
     try {
@@ -42,7 +55,7 @@ export const useColorManagement = () => {
   const hasCustomColors = allCustomColors.length > 0;
 
   const addCustomColor = useCallback(() => {
-    const paletteForValidation = [...BRICKLINK_COLORS, ...allCustomColors];
+    const paletteForValidation = allCustomColors;
     const nameCheck = validateColorName(customName, paletteForValidation);
     if (!nameCheck.ok) {
       toast.error(nameCheck.message || "Invalid name");
@@ -61,7 +74,7 @@ export const useColorManagement = () => {
     }
 
     const newColor = {
-      id: `custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: generateId("custom"),
       name: customName.trim(),
       hex: candidateHex,
     };
@@ -82,6 +95,7 @@ export const useColorManagement = () => {
     importedColors,
     allCustomColors,
     persistCustomColors,
+    generateId,
   ]);
 
   const deleteCustomColor = useCallback(
@@ -163,7 +177,8 @@ export const useColorManagement = () => {
         const skippedInImage = [];
         const skippedInvalid = [];
 
-        for (const color of colorsFromFile) {
+        for (let i = 0; i < colorsFromFile.length; i++) {
+          const color = colorsFromFile[i];
           const colorNameLower = color.name.toLowerCase();
           
           // Check if exists in image colors
@@ -185,7 +200,7 @@ export const useColorManagement = () => {
           }
 
           newColors.push({
-            id: `imported-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            id: generateId("imported", i),
             name: color.name,
             hex: color.hex,
           });
@@ -214,6 +229,7 @@ export const useColorManagement = () => {
         setImportedColors((prev) => [...newColors, ...prev]);
 
         const skippedMessages = [];
+        if (skippedInImage.length > 0) skippedMessages.push(`${skippedInImage.length} image colors`);
         if (skippedInCustom.length > 0) skippedMessages.push(`${skippedInCustom.length} duplicates`);
         if (skippedInvalid.length > 0) skippedMessages.push(`${skippedInvalid.length} invalid`);
 
@@ -227,7 +243,7 @@ export const useColorManagement = () => {
         toast.error(error.message || "Failed to import colors from file");
       }
     },
-    [allCustomColors, importedColors, persistCustomColors]
+    [allCustomColors, importedColors, persistCustomColors, generateId]
   );
 
   return {
