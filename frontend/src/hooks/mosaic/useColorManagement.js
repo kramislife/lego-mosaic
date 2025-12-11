@@ -1,8 +1,9 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import {  useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { BRICKLINK_COLORS } from "@/constant/colorConfig";
 import { isValidHex, validateColorName } from "@/utils/colors/colorValidator";
 import { exportToCSV } from "@/utils/exporters/csvExporter";
+import { importColorsFromFile } from "@/utils/importers/colorFileImporter";
 
 export const useColorManagement = () => {
   const [activeColorId, setActiveColorId] = useState(null);
@@ -18,6 +19,8 @@ export const useColorManagement = () => {
     }
   });
 
+  const [importedColors, setImportedColors] = useState([]);
+
   const persistCustomColors = useCallback((next) => {
     setCustomColors(next);
     try {
@@ -25,10 +28,21 @@ export const useColorManagement = () => {
     } catch {}
   }, []);
 
-  const hasCustomColors = customColors.length > 0;
+  // Merge custom colors (persisted) with imported colors (temporary)
+  const [allCustomColors, setAllCustomColors] = useState(() => [
+    ...importedColors,
+    ...customColors,
+  ]);
+
+  // Keep merged list in sync so UI/engine always see both sources together
+  useEffect(() => {
+    setAllCustomColors([...importedColors, ...customColors]);
+  }, [importedColors, customColors]);
+
+  const hasCustomColors = allCustomColors.length > 0;
 
   const addCustomColor = useCallback(() => {
-    const paletteForValidation = [...BRICKLINK_COLORS, ...customColors];
+    const paletteForValidation = [...BRICKLINK_COLORS, ...allCustomColors];
     const nameCheck = validateColorName(customName, paletteForValidation);
     if (!nameCheck.ok) {
       toast.error(nameCheck.message || "Invalid name");
@@ -46,31 +60,52 @@ export const useColorManagement = () => {
       return;
     }
 
-    const next = [
-      {
-        id: `custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        name: customName.trim(),
-        hex: candidateHex,
-      },
-      ...customColors,
-    ];
-    persistCustomColors(next);
+    const newColor = {
+      id: `custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      name: customName.trim(),
+      hex: candidateHex,
+    };
+
+    // Persisted list (localStorage) should include existing persisted colors + the new one
+    const nextPersisted = [newColor, ...customColors];
+    persistCustomColors(nextPersisted);
+
+    // Keep merged list (persisted + imported) in sync for consumers
+    setAllCustomColors([...importedColors, ...nextPersisted]);
     setCustomName("");
     setCustomHex("");
     toast.success(`${customName || "Custom"} color added successfully`);
-  }, [customName, customHex, customColors, persistCustomColors]);
+  }, [
+    customName,
+    customHex,
+    customColors,
+    importedColors,
+    allCustomColors,
+    persistCustomColors,
+  ]);
 
   const deleteCustomColor = useCallback(
     (paletteId) => {
-      const removed = customColors.find((c) => c.id === paletteId);
-      const next = customColors.filter((c) => c.id !== paletteId);
-      persistCustomColors(next);
+      // Check if it's in imported colors (temporary) or custom colors (persisted)
+      const inImported = importedColors.find((c) => c.id === paletteId);
+      const inCustom = customColors.find((c) => c.id === paletteId);
+      const removed = inImported || inCustom;
+
+      if (inImported) {
+        // Remove from imported colors (temporary)
+        setImportedColors((prev) => prev.filter((c) => c.id !== paletteId));
+      } else if (inCustom) {
+        // Remove from custom colors (persisted)
+        const next = customColors.filter((c) => c.id !== paletteId);
+        persistCustomColors(next);
+      }
+
       if (activeColorId === paletteId) {
         setActiveColorId(null);
       }
       toast.success(`${removed?.name || "Custom"} removed successfully`);
     },
-    [customColors, persistCustomColors, activeColorId]
+    [customColors, importedColors, persistCustomColors, activeColorId]
   );
 
   const [isDeleteCustomMode, setIsDeleteCustomMode] = useState(false);
@@ -80,10 +115,10 @@ export const useColorManagement = () => {
 
   useEffect(() => {
     if (!activeColorId) {
-      const fallback = customColors[0]?.id || BRICKLINK_COLORS[0]?.id || null;
+      const fallback = allCustomColors[0]?.id || BRICKLINK_COLORS[0]?.id || null;
       if (fallback) setActiveColorId(fallback);
     }
-  }, [activeColorId, customColors]);
+  }, [activeColorId, allCustomColors]);
 
   const exportColorsToCSV = useCallback((colorsToExport) => {
       try {
@@ -105,6 +140,96 @@ export const useColorManagement = () => {
       }
   }, []);
 
+  const importColorsFromFileHandler = useCallback(
+    async (file, imagePalette = []) => {
+      try {
+        const colorsFromFile = await importColorsFromFile(file);
+        
+        if (colorsFromFile.length === 0) {
+          toast.error("No valid colors found in file");
+          return;
+        }
+
+        // Check for duplicates against existing custom colors (both persisted and imported) and image colors
+        const allExistingColorNames = new Set(
+          allCustomColors.map((c) => c.name.toLowerCase())
+        );
+        const imageColorNames = new Set(
+          (imagePalette || []).map((c) => c.name.toLowerCase())
+        );
+
+        const newColors = [];
+        const skippedInCustom = [];
+        const skippedInImage = [];
+        const skippedInvalid = [];
+
+        for (const color of colorsFromFile) {
+          const colorNameLower = color.name.toLowerCase();
+          
+          // Check if exists in image colors
+          if (imageColorNames.has(colorNameLower)) {
+            skippedInImage.push(color.name);
+            continue;
+          }
+
+          // Check if exists in custom colors (persisted or imported)
+          if (allExistingColorNames.has(colorNameLower)) {
+            skippedInCustom.push(color.name);
+            continue;
+          }
+
+          // Validate hex format
+          if (!isValidHex(color.hex)) {
+            skippedInvalid.push(color.name);
+            continue;
+          }
+
+          newColors.push({
+            id: `imported-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            name: color.name,
+            hex: color.hex,
+          });
+          allExistingColorNames.add(colorNameLower);
+        }
+
+        // Show specific messages for colors that exist in image colors
+
+        if (newColors.length === 0) {
+          const totalSkipped = skippedInImage.length + skippedInCustom.length + skippedInvalid.length;
+          if (totalSkipped > 0) {
+            const reasons = [];
+            if (skippedInImage.length > 0) reasons.push(`${skippedInImage.length} in image colors`);
+            if (skippedInCustom.length > 0) reasons.push(`${skippedInCustom.length} duplicates`);
+            if (skippedInvalid.length > 0) reasons.push(`${skippedInvalid.length} invalid`);
+            toast.warning(
+              `All colors skipped (${reasons.join(", ")})`
+            );
+          } else {
+            toast.warning("No new colors to add");
+          }
+          return;
+        }
+
+        // Add new colors to imported colors (temporary, not persisted)
+        setImportedColors((prev) => [...newColors, ...prev]);
+
+        const skippedMessages = [];
+        if (skippedInCustom.length > 0) skippedMessages.push(`${skippedInCustom.length} duplicates`);
+        if (skippedInvalid.length > 0) skippedMessages.push(`${skippedInvalid.length} invalid`);
+
+        const message =
+          skippedMessages.length > 0
+            ? `${newColors.length} color(s) added, ${skippedMessages.join(", ")} skipped`
+            : `${newColors.length} color(s) added successfully`;
+        toast.success(message);
+      } catch (error) {
+        console.error("Error importing colors:", error);
+        toast.error(error.message || "Failed to import colors from file");
+      }
+    },
+    [allCustomColors, importedColors, persistCustomColors]
+  );
+
   return {
     activeColorId,
     setActiveColorId,
@@ -114,13 +239,14 @@ export const useColorManagement = () => {
     setCustomName,
     customHex,
     setCustomHex,
-    customColors,
+    customColors: allCustomColors, // Return merged list (imported + persisted)
     hasCustomColors,
     addCustomColor,
     deleteCustomColor,
     isDeleteCustomMode,
     toggleDeleteCustomMode,
     exportColorsToCSV,
+    importColorsFromFile: importColorsFromFileHandler,
   };
 };
 
