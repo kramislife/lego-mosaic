@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { BRICKLINK_COLORS } from "@/constant/colorConfig";
+import {
+  BRICKLINK_COLORS,
+  BRICKLINK_ROUND_TILE_COLORS,
+  BRICKLINK_SQUARE_TILE_COLORS,
+  BRICKLINK_ROUND_PLATE_COLORS,
+  BRICKLINK_SQUARE_PLATE_COLORS,
+} from "@/constant/colorConfig";
+import { PIXEL_MODES } from "@/constant/pixelConfig";
 import { preparePalette } from "@/utils/colors/colorMatcher";
 import {
   loadImage,
@@ -19,9 +26,27 @@ const getGenerationDelay = (width, height) => {
   if (totalPixels <= 16384) return 200; // 128x128: 200ms
   return 300; // Larger: 300ms
 };
-const BASE_PALETTE = preparePalette(
-  BRICKLINK_COLORS.map((color) => ({ ...color, isCustom: false }))
-);
+
+// Helper function to get the appropriate palette based on pixel mode
+const getPaletteForPixelMode = (pixelMode) => {
+  switch (pixelMode) {
+    case PIXEL_MODES.ROUND_TILE:
+    case PIXEL_MODES.CIRCLE:
+      return BRICKLINK_ROUND_TILE_COLORS;
+    case PIXEL_MODES.SQUARE_TILE:
+    case PIXEL_MODES.SQUARE:
+      return BRICKLINK_SQUARE_TILE_COLORS;
+    case PIXEL_MODES.ROUND_PLATE:
+    case PIXEL_MODES.CONCENTRIC_CIRCLE:
+      return BRICKLINK_ROUND_PLATE_COLORS;
+    case PIXEL_MODES.SQUARE_PLATE:
+    case PIXEL_MODES.CONCENTRIC_SQUARE:
+      return BRICKLINK_SQUARE_PLATE_COLORS;
+    default:
+      // Fallback to full palette if mode is not recognized
+      return BRICKLINK_COLORS;
+  }
+};
 
 export const useMosaicEngine = ({
   source,
@@ -83,18 +108,24 @@ export const useMosaicEngine = ({
     preparedCustomPaletteRef.current = preparedCustomPalette;
   }, [preparedCustomPalette]);
 
+  // Get the base palette for the current pixel mode
+  const basePaletteForMode = useMemo(() => {
+    const colors = getPaletteForPixelMode(pixelMode);
+    return preparePalette(colors.map((color) => ({ ...color, isCustom: false })));
+  }, [pixelMode]);
+
   const availablePalette = useMemo(() => {
     const excluded = new Set(excludedColorIds);
 
     // Fast path: no exclusions, just use base palette as-is so the reference
     // stays stable when only custom colors change.
     if (excluded.size === 0) {
-      return BASE_PALETTE;
+      return basePaletteForMode;
     }
 
-    const paletteEntries = [...preparedCustomPalette, ...BASE_PALETTE];
+    const paletteEntries = [...preparedCustomPalette, ...basePaletteForMode];
     return paletteEntries.filter((entry) => !excluded.has(entry.id));
-  }, [preparedCustomPalette, excludedColorIds]);
+  }, [preparedCustomPalette, excludedColorIds, basePaletteForMode]);
 
   const syncUsageState = useCallback(() => {
     const builtIn = [];
@@ -137,8 +168,9 @@ export const useMosaicEngine = ({
       height,
       baseGrid,
       imageFilter,
+      pixelMode,
     }),
-    [source, width, height, baseGrid, imageFilter]
+    [source, width, height, baseGrid, imageFilter, pixelMode]
   );
 
   useEffect(() => {
@@ -491,7 +523,7 @@ export const useMosaicEngine = ({
   const editBatchTimeoutRef = useRef(null);
 
   const editPixelColor = useCallback(
-    ({ row, col, color, pixelModeOverride }) => {
+    ({ row, col, color, pixelModeOverride, colorLookup }) => {
       const changed = paintPixel({
         row,
         col,
@@ -502,6 +534,7 @@ export const useMosaicEngine = ({
         editedPixelsRef,
         usageMapRef,
         ensureUsageEntry,
+        colorLookup,
       });
       if (!changed) return false;
 

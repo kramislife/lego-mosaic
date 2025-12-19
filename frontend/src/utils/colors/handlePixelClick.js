@@ -17,12 +17,17 @@ export const handlePixelClickLogic = ({
   if (!gridDimensions?.width || !gridDimensions?.height) return;
 
   if (tool === "paint") {
-    if (!activeColorId) return;
-    const color = colorLookup.get(activeColorId);
-    if (!color) return;
+    // This enables changing pixel mode without selecting a color
+    if (!activeColorId && (!brushPixelMode || brushPixelMode === "none")) {
+      return;
+    }
+
+    const color = activeColorId ? colorLookup.get(activeColorId) : null;
     const pixelModeOverride =
       brushPixelMode && brushPixelMode !== "none" ? brushPixelMode : null;
-    editPixelColor({ row, col, color, pixelModeOverride });
+
+    // If pixelModeOverride is set, we'll use the existing pixel's color
+    editPixelColor({ row, col, color, pixelModeOverride, colorLookup });
     return;
   }
 
@@ -43,5 +48,3 @@ export const handlePixelClickLogic = ({
     erasePixelEdit({ row, col });
   }
 };
-
-

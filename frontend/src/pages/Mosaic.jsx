@@ -97,6 +97,7 @@ const Mosaic = () => {
     setTool,
     brushPixelMode,
     setBrushPixelMode,
+    pixelMode,
     imagePalette,
     customPaletteUsage,
     totalPixels,

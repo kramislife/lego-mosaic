@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Download, RotateCcw, Palette, X, Upload } from "lucide-react";
+import { Download, RotateCcw, Palette, X, Upload, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -30,6 +30,7 @@ const ColorManagement = ({
   setActiveColorId,
   brushPixelMode,
   setBrushPixelMode,
+  pixelMode,
   customName,
   setCustomName,
   customHex,
@@ -134,7 +135,11 @@ const ColorManagement = ({
               <SelectValue placeholder="Pixel mode (default: no change)" />
             </SelectTrigger>
             <SelectContent>
-              {PIXEL_MODE_OPTIONS.map((mode) => (
+              {PIXEL_MODE_OPTIONS.filter((mode) => {
+                if (!pixelMode) return true;
+                const currentModeValue = pixelMode;
+                return mode.value !== currentModeValue;
+              }).map((mode) => (
                 <SelectItem key={mode.value} value={mode.value}>
                   {mode.label}
                 </SelectItem>
@@ -202,7 +207,11 @@ const ColorManagement = ({
                       ? "border-primary"
                       : "border-border"
                   }`}
-                  onClick={() => setActiveColorId(color.id)}
+                  onClick={() =>
+                    setActiveColorId(
+                      activeColorId === color.id ? null : color.id
+                    )
+                  }
                 >
                   <span
                     className="size-8 rounded-md border"
@@ -214,11 +223,9 @@ const ColorManagement = ({
                       {color.hex}
                     </span>
                   </div>
-                  <Input
-                    readOnly
-                    value={formatCount(color.count)}
-                    className="w-16 text-center"
-                  />
+                  <span className="w-12 text-center text-sm">
+                    {formatCount(color.count)}
+                  </span>
                   <Button
                     type="button"
                     variant="ghost"
@@ -260,7 +267,11 @@ const ColorManagement = ({
                       ? "border-primary"
                       : "border-border"
                   }`}
-                  onClick={() => setActiveColorId(color.id)}
+                  onClick={() =>
+                    setActiveColorId(
+                      activeColorId === color.id ? null : color.id
+                    )
+                  }
                 >
                   <span
                     className="size-8 rounded-md border"
@@ -272,11 +283,9 @@ const ColorManagement = ({
                       {color.hex}
                     </span>
                   </div>
-                  <Input
-                    readOnly
-                    value={formatCount(color.count)}
-                    className="w-20 text-center"
-                  />
+                  <span className="w-12 text-center text-sm">
+                    {formatCount(color.count)}
+                  </span>
                   <Button
                     type="button"
                     variant="ghost"
@@ -329,7 +338,7 @@ const ColorManagement = ({
               className="flex-1 py-3 text-base"
               onClick={addCustomColor}
             >
-              Add Custom Color
+              Add Color to Palette
             </Button>
 
             <input
@@ -357,6 +366,10 @@ const ColorManagement = ({
               <Upload />
             </Button>
           </div>
+          <p className="text-xs font-medium flex items-center gap-1 pt-1 text-destructive">
+            <Info className="size-4" />
+            Color quantity updates automatically when you paint on the canvas.
+          </p>
         </div>
       </CardContent>
     </Card>
