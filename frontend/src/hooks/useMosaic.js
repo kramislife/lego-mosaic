@@ -146,11 +146,6 @@ export const useMosaic = () => {
       return aIndex - bIndex;
     });
   }, [customPaletteUsage, imagePalette]);
-const paletteVersion = useMemo(
-  () => availableColors.map((color) => `${color.id}:${color.count}`).join("|"),
-  [availableColors]
-);
-const previousPaletteVersion = useRef(paletteVersion);
 const builtInColorCount = imagePalette.length;
 const customColorCount = customPaletteUsage.length;
 const totalColorCount = builtInColorCount + customColorCount;
@@ -350,23 +345,6 @@ const colorLookup = useMemo(() => {
     handleResetPaletteUtil({ resetExcludedColors, resetAllEdits });
   }, [resetExcludedColors, resetAllEdits]);
 
-  useEffect(() => {
-    if (paletteVersion === previousPaletteVersion.current) {
-      return;
-    }
-
-    previousPaletteVersion.current = paletteVersion;
-
-    const hasActiveColor =
-      activeColorId && availableColors.some((color) => color.id === activeColorId);
-
-    if (hasActiveColor) {
-      return;
-    }
-
-    const nextColorId = availableColors[0]?.id ?? null;
-    setActiveColorId(nextColorId);
-  }, [paletteVersion, availableColors, activeColorId, setActiveColorId]);
 
   return {
     // image attachment
