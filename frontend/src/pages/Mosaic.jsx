@@ -6,6 +6,7 @@ import PixelMode from "@/components/mosaic/PixelMode";
 import ColorManagement from "@/components/mosaic/ColorManagement/ColorManagement";
 import Export from "@/components/mosaic/Export";
 import Preview from "@/components/mosaic/Preview";
+import { GlobalProgress } from "@/components/ui/progress";
 import { useMosaic } from "@/hooks/useMosaic";
 import { useExpand } from "@/contexts/ExpandContext";
 
@@ -134,30 +135,33 @@ const Mosaic = () => {
   };
 
   return (
-    <div
-      className={`w-full p-5 ${
-        isExpanded ? "space-y-3" : "grid grid-cols-12 gap-3"
-      }`}
-    >
-      {/* Sidebar controls */}
-      <aside
-        className={
-          isExpanded ? "hidden" : "col-span-12 lg:col-span-4 space-y-3"
-        }
+    <>
+      <GlobalProgress isProcessing={isGeneratingMosaic} />
+      <div
+        className={`w-full p-5 ${
+          isExpanded ? "space-y-3" : "grid grid-cols-12 gap-3"
+        }`}
       >
-        <UploadImage
-          imageSrc={imageSrc}
-          crop={crop}
-          setCrop={setCrop}
-          fileInputRef={fileInputRef}
-          handleFileSelect={handleFileSelect}
-          handleImageLoad={handleImageLoad}
-          onCropComplete={onCropComplete}
-          handleRemoveImage={handleRemoveImage}
-          imageFilter={imageFilter}
-          cropAspect={cropAspect}
-        />
-        {/* Adjust Base Grid & Resolution */}
+        {/* Sidebar controls */}
+        <aside
+          className={
+            isExpanded ? "hidden" : "col-span-12 lg:col-span-4 space-y-3"
+          }
+          style={isGeneratingMosaic ? { pointerEvents: "none", opacity: 0.6 } : undefined}
+        >
+          <UploadImage
+            imageSrc={imageSrc}
+            crop={crop}
+            setCrop={setCrop}
+            fileInputRef={fileInputRef}
+            handleFileSelect={handleFileSelect}
+            handleImageLoad={handleImageLoad}
+            onCropComplete={onCropComplete}
+            handleRemoveImage={handleRemoveImage}
+            imageFilter={imageFilter}
+            cropAspect={cropAspect}
+          />
+          {/* Adjust Base Grid & Resolution */}
         <Resolution
           baseGrid={baseGrid}
           onSelectBase={onSelectBase}
@@ -217,7 +221,7 @@ const Mosaic = () => {
           isExpanded={isExpanded}
           gridDimensions={gridDimensions}
           pixelMode={pixelMode}
-          onPixelClick={handlePixelClick}
+          onPixelClick={isGeneratingMosaic ? undefined : handlePixelClick}
           pixelGrid={pixelGrid}
           tool={tool}
           activeColorHex={activeColorHex}
@@ -227,11 +231,15 @@ const Mosaic = () => {
 
       {/* Color Management below preview in expanded mode */}
       {isExpanded && (
-        <div className="col-span-12">
+        <div
+          className="col-span-12"
+          style={isGeneratingMosaic ? { pointerEvents: "none", opacity: 0.6 } : undefined}
+        >
           <ColorManagement {...colorManagementProps} isVisible={isExpanded} />
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 

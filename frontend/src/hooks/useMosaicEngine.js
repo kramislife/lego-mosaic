@@ -62,6 +62,7 @@ export const useMosaicEngine = ({
   const [customPaletteUsage, setCustomPaletteUsage] = useState([]);
   const [totalPixels, setTotalPixels] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState(null);
   const [excludedColorIds, setExcludedColorIds] = useState([]);
   const pixelGridRef = useRef([]);
@@ -474,6 +475,7 @@ export const useMosaicEngine = ({
         clearTimeout(renderTimeoutRef.current);
         renderTimeoutRef.current = null;
       }
+      setIsRendering(false);
       setMosaicUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return null;
@@ -485,6 +487,9 @@ export const useMosaicEngine = ({
     if (renderTimeoutRef.current) {
       clearTimeout(renderTimeoutRef.current);
     }
+
+    // Mark as rendering
+    setIsRendering(true);
 
     // For large mosaics (>64x64), debounce rapid updates
     const totalPixels = gridDimensions.width * gridDimensions.height;
@@ -504,6 +509,7 @@ export const useMosaicEngine = ({
         if (prev) URL.revokeObjectURL(prev);
         return rendered.mosaicUrl;
       });
+      setIsRendering(false);
     };
 
     if (debounceDelay > 0) {
@@ -632,6 +638,9 @@ export const useMosaicEngine = ({
     [ensureUsageEntry, gridDimensions, syncUsageState]
   );
 
+  // Combined busy state - true while processing OR rendering
+  const isBusy = isProcessing || isRendering;
+
   return {
     mosaicUrl,
     imagePalette,
@@ -639,7 +648,7 @@ export const useMosaicEngine = ({
     totalPixels,
     removePaletteColor,
     resetExcludedColors,
-    isProcessing,
+    isProcessing: isBusy,
     error,
     gridDimensions,
     pixelGrid: pixelGridRef.current,
