@@ -192,3 +192,17 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Indeterminate progress bar animation */
+@keyframes indeterminate-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.animate-indeterminate-progress {
+  animation: indeterminate-progress 1.5s ease-in-out infinite;
+}

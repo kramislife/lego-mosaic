@@ -60,6 +60,11 @@ export const useMosaic = () => {
   const { pixelMode, setPixelMode } = usePixelMode();
   const [brushPixelMode, setBrushPixelMode] = useState("none");
 
+  // Reset brushPixelMode to "none" when pixelMode changes
+  useEffect(() => {
+    setBrushPixelMode("none");
+  }, [pixelMode]);
+
   useEffect(() => {
     if (width > 0 && height > 0) {
       alignCropToAspect(width / height);
